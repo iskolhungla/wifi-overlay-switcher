@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?android:attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="4dp"
+    android:paddingVertical="10dp">
+
+    <ImageView
+        android:id="@+id/ivSignal"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:src="@drawable/ic_signal_4" />
+
+    <TextView
+        android:id="@+id/tvSsid"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp" />
+
+    <ImageView
+        android:id="@+id/ivLock"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_marginEnd="8dp"
+        android:src="@drawable/ic_lock"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/ivConnected"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:src="@drawable/ic_check"
+        android:visibility="gone" />
+
+</LinearLayout>

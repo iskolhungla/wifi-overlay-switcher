@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">WiFi Overlay</string>
+    <string name="tile_label">WiFi</string>
+    <string name="channel_name">Служба WiFi Overlay</string>
+    <string name="overlay_title">Сети WiFi</string>
+    <string name="refresh">Обновить</string>
+    <string name="close">Закрыть</string>
+    <string name="password_hint">Пароль сети</string>
+    <string name="cancel">Отмена</string>
+    <string name="connect">Подключить</string>
+    <string name="connecting">Подключение к %1$s…</string>
+    <string name="connected">Подключено: %1$s</string>
+    <string name="connect_failed">Не удалось подключиться к %1$s</string>
+    <string name="scanning">Сканирование…</string>
+    <string name="no_permission">Нет разрешения на сканирование</string>
+    <string name="no_networks">Сети не найдены</string>
+    <string name="networks_found">Найдено сетей: %1$d</string>
+    <string name="permission_setup_title">Настройка разрешений</string>
+    <string name="permission_status">Оверлей: %1$s\nСканирование WiFi: %2$s</string>
+    <string name="status_missing">нет</string>
+    <string name="grant_overlay">Разрешить поверх других окон</string>
+    <string name="grant_runtime">Запросить разрешения на скан</string>
+    <string name="done">Готово</string>
+</resources>
