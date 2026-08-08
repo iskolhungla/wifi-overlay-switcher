@@ -4,6 +4,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.BroadcastReceiver
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -14,11 +16,14 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.text.format.Formatter
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
 import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -29,6 +34,7 @@ class OverlayService : Service() {
     companion object {
         private const val CHANNEL_ID = "wifi_overlay_channel"
         private const val NOTIF_ID = 1
+        private const val OVERLAY_WIDTH_FRACTION = 0.8
 
         fun show(context: Context) {
             val intent = Intent(context, OverlayService::class.java)
@@ -112,8 +118,10 @@ class OverlayService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
+        val overlayWidth = (resources.displayMetrics.widthPixels * OVERLAY_WIDTH_FRACTION).toInt()
+
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
+            overlayWidth,
             WindowManager.LayoutParams.WRAP_CONTENT,
             overlayType,
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
@@ -125,11 +133,16 @@ class OverlayService : Service() {
 
         val recycler = view.findViewById<RecyclerView>(R.id.recyclerNetworks)
         recycler.layoutManager = LinearLayoutManager(this)
-        adapter = NetworkAdapter { network -> onNetworkSelected(network) }
+        adapter = NetworkAdapter(
+            onNetworkClick = { network -> onNetworkSelected(network) },
+            onNetworkLongClick = { network -> showNetworkDetail(network) }
+        )
         recycler.adapter = adapter
 
         view.findViewById<View>(R.id.btnClose).setOnClickListener { dismissOverlay() }
         view.findViewById<View>(R.id.btnRefresh).setOnClickListener { triggerScan() }
+        view.findViewById<View>(R.id.btnDetailClose).setOnClickListener { hideNetworkDetail() }
+        view.findViewById<View>(R.id.btnDetailCopyAll).setOnClickListener { copyAllDetailFields() }
 
         windowManager.addView(view, params)
     }
@@ -145,10 +158,16 @@ class OverlayService : Service() {
         stopSelf()
     }
 
+    private fun setBusy(busy: Boolean) {
+        overlayView?.findViewById<ProgressBar>(R.id.scanProgress)?.visibility =
+            if (busy) View.VISIBLE else View.GONE
+    }
+
     private fun triggerScan() {
         @Suppress("DEPRECATION")
         wifiManager.startScan()
         setStatus(getString(R.string.scanning))
+        setBusy(true)
     }
 
     private fun setStatus(text: String) {
@@ -163,7 +182,6 @@ class OverlayService : Service() {
 
             val items = scanEntries
                 .distinctBy { it.ssid }
-                .sortedByDescending { it.rssi }
                 .map { entry ->
                     NetworkItem(
                         ssid = entry.ssid,
@@ -173,9 +191,14 @@ class OverlayService : Service() {
                         isSaved = savedNames.contains(entry.ssid)
                     )
                 }
+                .sortedWith(
+                    compareByDescending<NetworkItem> { it.isConnected }
+                        .thenByDescending { it.level }
+                )
 
             mainHandler.post {
                 adapter.submit(items)
+                setBusy(false)
                 setStatus(
                     if (items.isEmpty()) getString(R.string.no_networks)
                     else getString(R.string.networks_found, items.size)
@@ -219,6 +242,7 @@ class OverlayService : Service() {
 
     private fun connectAndReport(ssid: String, password: String?) {
         setStatus(getString(R.string.connecting, ssid))
+        setBusy(true)
         Thread {
             val ok = RootWifiControl.connect(ssid, password)
             mainHandler.post {
@@ -229,6 +253,86 @@ class OverlayService : Service() {
                 triggerScan()
             }
         }.start()
+    }
+
+    // ---- Детали сети (долгий тап) ----
+
+    private fun showNetworkDetail(network: NetworkItem) {
+        val view = overlayView ?: return
+        val detailContainer = view.findViewById<LinearLayout>(R.id.networkDetailContainer)
+        val recycler = view.findViewById<View>(R.id.recyclerNetworks)
+        val fieldsContainer = view.findViewById<LinearLayout>(R.id.detailFieldsContainer)
+        val title = view.findViewById<TextView>(R.id.tvDetailTitle)
+
+        title.text = network.ssid
+        fieldsContainer.removeAllViews()
+
+        when {
+            network.isConnected -> {
+                collectLiveConnectionInfo().forEach { (label, value) ->
+                    addDetailRow(fieldsContainer, label, value)
+                }
+            }
+            network.isSaved -> {
+                addDetailRow(fieldsContainer, getString(R.string.detail_archived_title), getString(R.string.detail_archived_body))
+            }
+            else -> {
+                addDetailRow(fieldsContainer, getString(R.string.detail_unknown_title), getString(R.string.detail_unknown_body))
+            }
+        }
+
+        recycler.visibility = View.GONE
+        detailContainer.visibility = View.VISIBLE
+    }
+
+    private fun hideNetworkDetail() {
+        val view = overlayView ?: return
+        view.findViewById<View>(R.id.networkDetailContainer).visibility = View.GONE
+        view.findViewById<View>(R.id.recyclerNetworks).visibility = View.VISIBLE
+    }
+
+    private fun collectLiveConnectionInfo(): List<Pair<String, String>> {
+        @Suppress("DEPRECATION")
+        val dhcp = wifiManager.dhcpInfo ?: return emptyList()
+        fun fmt(ip: Int): String = Formatter.formatIpAddress(ip)
+
+        val list = mutableListOf<Pair<String, String>>()
+        list.add(getString(R.string.detail_ip) to fmt(dhcp.ipAddress))
+        list.add(getString(R.string.detail_gateway) to fmt(dhcp.gateway))
+        list.add(getString(R.string.detail_netmask) to fmt(dhcp.netmask))
+        if (dhcp.dns1 != 0) list.add(getString(R.string.detail_dns1) to fmt(dhcp.dns1))
+        if (dhcp.dns2 != 0) list.add(getString(R.string.detail_dns2) to fmt(dhcp.dns2))
+        if (dhcp.serverAddress != 0) list.add(getString(R.string.detail_dhcp_server) to fmt(dhcp.serverAddress))
+        return list
+    }
+
+    private fun addDetailRow(container: LinearLayout, label: String, value: String) {
+        val row = LayoutInflater.from(this).inflate(R.layout.item_detail_row, container, false)
+        row.findViewById<TextView>(R.id.tvLabel).text = label
+        row.findViewById<TextView>(R.id.tvValue).text = value
+        row.findViewById<View>(R.id.btnCopy).setOnClickListener {
+            copyToClipboard(value)
+        }
+        container.addView(row)
+    }
+
+    private fun copyAllDetailFields() {
+        val view = overlayView ?: return
+        val fieldsContainer = view.findViewById<LinearLayout>(R.id.detailFieldsContainer)
+        val builder = StringBuilder()
+        for (i in 0 until fieldsContainer.childCount) {
+            val row = fieldsContainer.getChildAt(i)
+            val label = row.findViewById<TextView>(R.id.tvLabel).text
+            val value = row.findViewById<TextView>(R.id.tvValue).text
+            builder.append(label).append(": ").append(value).append('\n')
+        }
+        copyToClipboard(builder.toString().trim())
+    }
+
+    private fun copyToClipboard(text: String) {
+        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("wifi-overlay", text))
+        setStatus(getString(R.string.copied))
     }
 
     override fun onDestroy() {

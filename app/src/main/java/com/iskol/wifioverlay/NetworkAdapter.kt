@@ -8,7 +8,8 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
 class NetworkAdapter(
-    private val onNetworkClick: (NetworkItem) -> Unit
+    private val onNetworkClick: (NetworkItem) -> Unit,
+    private val onNetworkLongClick: (NetworkItem) -> Unit
 ) : RecyclerView.Adapter<NetworkAdapter.VH>() {
 
     private val items = mutableListOf<NetworkItem>()
@@ -33,12 +34,14 @@ class NetworkAdapter(
 
     inner class VH(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val ssidView = itemView.findViewById<TextView>(R.id.tvSsid)
+        private val signalTextView = itemView.findViewById<TextView>(R.id.tvSignalText)
         private val lockView = itemView.findViewById<ImageView>(R.id.ivLock)
         private val checkView = itemView.findViewById<ImageView>(R.id.ivConnected)
         private val signalView = itemView.findViewById<ImageView>(R.id.ivSignal)
 
         fun bind(item: NetworkItem) {
             ssidView.text = item.ssid
+            signalTextView.text = "${item.level} дБм · ${dbmToPercent(item.level)}%"
             lockView.visibility = if (item.isSecured) View.VISIBLE else View.GONE
             checkView.visibility = if (item.isConnected) View.VISIBLE else View.GONE
             val iconRes = when {
@@ -49,6 +52,18 @@ class NetworkAdapter(
             }
             signalView.setImageResource(iconRes)
             itemView.setOnClickListener { onNetworkClick(item) }
+            itemView.setOnLongClickListener {
+                onNetworkLongClick(item)
+                true
+            }
+        }
+    }
+
+    companion object {
+        fun dbmToPercent(dbm: Int): Int = when {
+            dbm <= -100 -> 0
+            dbm >= -50 -> 100
+            else -> 2 * (dbm + 100)
         }
     }
 }

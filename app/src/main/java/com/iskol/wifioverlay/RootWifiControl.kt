@@ -66,11 +66,15 @@ object RootWifiControl {
             val escapedPass = password.replace("\"", "\\\"")
             "cmd wifi connect-network \"$escapedSsid\" wpa2 \"$escapedPass\""
         }
-        val out = RootShell.execAsUid(SHELL_UID, command)
-        return out.isNotBlank() &&
-            !out.contains("error", ignoreCase = true) &&
-            !out.contains("Failure", ignoreCase = true) &&
-            !out.contains("Exception", ignoreCase = true)
+        RootShell.execAsUid(SHELL_UID, command)
+
+        // connect-network обычно ничего не печатает при успехе, поэтому вместо
+        // разбора текста реально проверяем, подключились ли мы к нужной сети.
+        repeat(8) {
+            Thread.sleep(800)
+            if (currentSsid() == ssid) return true
+        }
+        return false
     }
 
     fun disconnect(): Boolean {
