@@ -166,8 +166,8 @@ class OverlayService : Service() {
         }
 
         Thread {
-            val currentSsid = RootWifiControl.currentSsid(this)
-            val savedNames = RootWifiControl.listSavedNetworkNames(this)
+            val currentSsid = RootWifiControl.currentSsid()
+            val savedNames = RootWifiControl.listSavedNetworkNames()
 
             val items = results
                 .distinctBy { it.SSID }
@@ -232,7 +232,7 @@ class OverlayService : Service() {
     private fun connectAndReport(ssid: String, password: String?) {
         setStatus(getString(R.string.connecting, ssid))
         Thread {
-            val ok = RootWifiControl.connect(this, ssid, password)
+            val ok = RootWifiControl.connect(ssid, password)
             mainHandler.post {
                 setStatus(
                     if (ok) getString(R.string.connected, ssid)

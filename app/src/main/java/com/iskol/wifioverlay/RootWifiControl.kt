@@ -1,20 +1,17 @@
 package com.iskol.wifioverlay
 
-import android.content.Context
-import android.util.Log
-
 object RootWifiControl {
 
-    private const val TAG = "RootWifiControl"
+    private const val SHELL_UID = 2000
 
-    fun currentSsid(context: Context): String? {
-        val out = safeExec(context, "cmd wifi status")
+    fun currentSsid(): String? {
+        val out = RootShell.execAsUid(SHELL_UID, "cmd wifi status")
         val regex = Regex("connected to \"([^\"]+)\"")
         return regex.find(out)?.groupValues?.get(1)
     }
 
-    fun listSavedNetworkNames(context: Context): Set<String> {
-        val out = safeExec(context, "cmd wifi list-networks")
+    fun listSavedNetworkNames(): Set<String> {
+        val out = RootShell.execAsUid(SHELL_UID, "cmd wifi list-networks")
         val names = mutableSetOf<String>()
         out.lineSequence().drop(1).forEach { line ->
             val parts = line.trim().split(Regex("\\s{2,}"))
@@ -25,7 +22,7 @@ object RootWifiControl {
         return names
     }
 
-    fun connect(context: Context, ssid: String, password: String?): Boolean {
+    fun connect(ssid: String, password: String?): Boolean {
         val escapedSsid = ssid.replace("\"", "\\\"")
         val command = if (password.isNullOrEmpty()) {
             "cmd wifi connect-network \"$escapedSsid\" open"
@@ -33,33 +30,20 @@ object RootWifiControl {
             val escapedPass = password.replace("\"", "\\\"")
             "cmd wifi connect-network \"$escapedSsid\" wpa2 \"$escapedPass\""
         }
-        val out = safeExec(context, command)
+        val out = RootShell.execAsUid(SHELL_UID, command)
         return out.isNotBlank() &&
             !out.contains("error", ignoreCase = true) &&
             !out.contains("Failure", ignoreCase = true) &&
             !out.contains("Exception", ignoreCase = true)
     }
 
-    fun disconnect(context: Context): Boolean {
-        val out = safeExec(context, "cmd wifi disconnect")
+    fun disconnect(): Boolean {
+        val out = RootShell.execAsUid(SHELL_UID, "cmd wifi disconnect")
         return !out.contains("Failure", ignoreCase = true)
     }
 
-    private fun safeExec(context: Context, command: String): String {
-        return try {
-            AdbShellBridge.execShell(context, command)
-        } catch (e: Exception) {
-            Log.e(TAG, "adb shell exec failed for [$command]: ${e.message}")
-            ""
-        }
-    }
-
-    /** Диагностика: выполнить произвольную команду через тот же ADB-мост. */
-    fun rawDiagnostic(context: Context, command: String): String {
-        return try {
-            AdbShellBridge.execShell(context, command)
-        } catch (e: Exception) {
-            "error: ${e.message}"
-        }
+    /** Диагностика: выполнить произвольную команду от shell-uid. */
+    fun rawDiagnostic(command: String): String {
+        return RootShell.execAsUid(SHELL_UID, command)
     }
 }
