@@ -58,13 +58,16 @@ object RootWifiControl {
         return names
     }
 
-    fun connect(ssid: String, password: String?): Boolean {
+    fun connect(ssid: String, password: String?, secured: Boolean): Boolean {
         val escapedSsid = ssid.replace("\"", "\\\"")
+        val securityType = if (secured) "wpa2" else "open"
         val command = if (password.isNullOrEmpty()) {
-            "cmd wifi connect-network \"$escapedSsid\" open"
+            // Пустой пароль для защищённой сети = переиспользовать уже сохранённый
+            // (connect-network подбирает существующий конфиг по SSID+типу защиты).
+            "cmd wifi connect-network \"$escapedSsid\" $securityType"
         } else {
             val escapedPass = password.replace("\"", "\\\"")
-            "cmd wifi connect-network \"$escapedSsid\" wpa2 \"$escapedPass\""
+            "cmd wifi connect-network \"$escapedSsid\" $securityType \"$escapedPass\""
         }
         RootShell.execAsUid(SHELL_UID, command)
 

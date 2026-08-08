@@ -41,6 +41,9 @@ class NetworkAdapter(
 
         fun bind(item: NetworkItem) {
             ssidView.text = item.ssid
+            ssidView.setTextColor(
+                if (item.isSaved) 0xFF66BB6A.toInt() else 0xFFFFFFFF.toInt()
+            )
             signalTextView.text = "${item.level} дБм · ${dbmToPercent(item.level)}%"
             lockView.visibility = if (item.isSecured) View.VISIBLE else View.GONE
             checkView.visibility = if (item.isConnected) View.VISIBLE else View.GONE

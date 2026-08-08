@@ -209,8 +209,8 @@ class OverlayService : Service() {
 
     private fun onNetworkSelected(network: NetworkItem) {
         if (network.isConnected) return
-        if (network.isSaved || !network.isSecured) {
-            connectAndReport(network.ssid, null)
+        if (!network.isSecured) {
+            connectAndReport(network)
         } else {
             showPasswordPrompt(network)
         }
@@ -225,6 +225,11 @@ class OverlayService : Service() {
 
         ssidLabel.text = network.ssid
         input.setText("")
+        input.hint = if (network.isSaved) {
+            getString(R.string.password_hint_saved)
+        } else {
+            getString(R.string.password_hint)
+        }
         promptContainer.visibility = View.VISIBLE
         recycler.visibility = View.GONE
 
@@ -233,22 +238,22 @@ class OverlayService : Service() {
             recycler.visibility = View.VISIBLE
         }
         view.findViewById<View>(R.id.btnPasswordConnect).setOnClickListener {
-            val pass = input.text.toString()
+            val pass = input.text.toString().ifBlank { null }
             promptContainer.visibility = View.GONE
             recycler.visibility = View.VISIBLE
-            connectAndReport(network.ssid, pass)
+            connectAndReport(network, pass)
         }
     }
 
-    private fun connectAndReport(ssid: String, password: String?) {
-        setStatus(getString(R.string.connecting, ssid))
+    private fun connectAndReport(network: NetworkItem, password: String? = null) {
+        setStatus(getString(R.string.connecting, network.ssid))
         setBusy(true)
         Thread {
-            val ok = RootWifiControl.connect(ssid, password)
+            val ok = RootWifiControl.connect(network.ssid, password, network.isSecured)
             mainHandler.post {
                 setStatus(
-                    if (ok) getString(R.string.connected, ssid)
-                    else getString(R.string.connect_failed, ssid)
+                    if (ok) getString(R.string.connected, network.ssid)
+                    else getString(R.string.connect_failed, network.ssid)
                 )
                 triggerScan()
             }

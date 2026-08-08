@@ -6,6 +6,7 @@
     <string name="refresh">Обновить</string>
     <string name="close">Закрыть</string>
     <string name="password_hint">Пароль сети</string>
+    <string name="password_hint_saved">Оставь пустым — подключит сохранённым паролем</string>
     <string name="cancel">Отмена</string>
     <string name="connect">Подключить</string>
     <string name="connecting">Подключение к %1$s…</string>
