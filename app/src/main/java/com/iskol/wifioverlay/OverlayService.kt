@@ -9,7 +9,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
-import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Handler
@@ -157,32 +156,21 @@ class OverlayService : Service() {
     }
 
     private fun refreshNetworks() {
-        val results: List<ScanResult> = try {
-            @Suppress("MissingPermission")
-            wifiManager.scanResults
-        } catch (e: SecurityException) {
-            setStatus(getString(R.string.no_permission))
-            emptyList()
-        }
-
         Thread {
+            val scanEntries = RootWifiControl.scanNetworks()
             val currentSsid = RootWifiControl.currentSsid()
             val savedNames = RootWifiControl.listSavedNetworkNames()
 
-            val items = results
-                .distinctBy { it.SSID }
-                .filter { it.SSID.isNotBlank() }
-                .sortedByDescending { it.level }
-                .map { sr ->
+            val items = scanEntries
+                .distinctBy { it.ssid }
+                .sortedByDescending { it.rssi }
+                .map { entry ->
                     NetworkItem(
-                        ssid = sr.SSID,
-                        isSecured = sr.capabilities.contains("WPA") ||
-                            sr.capabilities.contains("WEP") ||
-                            sr.capabilities.contains("EAP") ||
-                            sr.capabilities.contains("SAE"),
-                        level = sr.level,
-                        isConnected = sr.SSID == currentSsid,
-                        isSaved = savedNames.contains(sr.SSID)
+                        ssid = entry.ssid,
+                        isSecured = entry.secured,
+                        level = entry.rssi,
+                        isConnected = entry.ssid == currentSsid,
+                        isSaved = savedNames.contains(entry.ssid)
                     )
                 }
 
