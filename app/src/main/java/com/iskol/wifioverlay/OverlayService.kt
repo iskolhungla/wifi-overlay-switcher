@@ -168,13 +168,22 @@ class OverlayService : Service() {
         wifiManager.startScan()
         setStatus(getString(R.string.scanning))
         setBusy(true)
+        // Подстраховка: система может троттлить частые сканы и не прислать
+        // SCAN_RESULTS_AVAILABLE_ACTION вообще — на этот случай обновляем
+        // список принудительно через несколько секунд, тем, что реально
+        // есть в кэше системы на этот момент.
+        mainHandler.removeCallbacks(fallbackRefreshRunnable)
+        mainHandler.postDelayed(fallbackRefreshRunnable, 3000)
     }
+
+    private val fallbackRefreshRunnable = Runnable { refreshNetworks() }
 
     private fun setStatus(text: String) {
         overlayView?.findViewById<TextView>(R.id.tvStatus)?.text = text
     }
 
     private fun refreshNetworks() {
+        mainHandler.removeCallbacks(fallbackRefreshRunnable)
         Thread {
             val scanEntries = RootWifiControl.scanNetworks()
             val currentSsid = RootWifiControl.currentSsid()
