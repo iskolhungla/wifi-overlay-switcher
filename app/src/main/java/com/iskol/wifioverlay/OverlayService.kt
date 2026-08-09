@@ -210,7 +210,12 @@ class OverlayService : Service() {
     private fun onNetworkSelected(network: NetworkItem) {
         if (network.isConnected) return
         if (!network.isSecured) {
-            connectAndReport(network)
+            connectAndReport(network, null)
+            return
+        }
+        val cached = PasswordStore.get(this, network.ssid)
+        if (cached != null) {
+            connectAndReport(network, cached)
         } else {
             showPasswordPrompt(network)
         }
@@ -245,11 +250,14 @@ class OverlayService : Service() {
         }
     }
 
-    private fun connectAndReport(network: NetworkItem, password: String? = null) {
+    private fun connectAndReport(network: NetworkItem, password: String?) {
         setStatus(getString(R.string.connecting, network.ssid))
         setBusy(true)
         Thread {
-            val ok = RootWifiControl.connect(network.ssid, password, network.isSecured)
+            val ok = WifiConnector.connect(this, network.ssid, password)
+            if (ok && !password.isNullOrEmpty()) {
+                PasswordStore.put(this, network.ssid, password)
+            }
             mainHandler.post {
                 setStatus(
                     if (ok) getString(R.string.connected, network.ssid)

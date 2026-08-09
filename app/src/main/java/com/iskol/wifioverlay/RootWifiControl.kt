@@ -58,33 +58,6 @@ object RootWifiControl {
         return names
     }
 
-    fun connect(ssid: String, password: String?, secured: Boolean): Boolean {
-        val escapedSsid = ssid.replace("\"", "\\\"")
-        val securityType = if (secured) "wpa2" else "open"
-        val command = if (password.isNullOrEmpty()) {
-            // Пустой пароль для защищённой сети = переиспользовать уже сохранённый
-            // (connect-network подбирает существующий конфиг по SSID+типу защиты).
-            "cmd wifi connect-network \"$escapedSsid\" $securityType"
-        } else {
-            val escapedPass = password.replace("\"", "\\\"")
-            "cmd wifi connect-network \"$escapedSsid\" $securityType \"$escapedPass\""
-        }
-        RootShell.execAsUid(SHELL_UID, command)
-
-        // connect-network обычно ничего не печатает при успехе, поэтому вместо
-        // разбора текста реально проверяем, подключились ли мы к нужной сети.
-        repeat(8) {
-            Thread.sleep(800)
-            if (currentSsid() == ssid) return true
-        }
-        return false
-    }
-
-    fun disconnect(): Boolean {
-        val out = RootShell.execAsUid(SHELL_UID, "cmd wifi disconnect")
-        return !out.contains("Failure", ignoreCase = true)
-    }
-
     /** Диагностика: выполнить произвольную команду от shell-uid. */
     fun rawDiagnostic(command: String): String {
         return RootShell.execAsUid(SHELL_UID, command)
