@@ -6,6 +6,7 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.wifi.WifiNetworkSpecifier
+import android.util.Log
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -22,6 +23,8 @@ import java.util.concurrent.TimeUnit
  */
 object WifiConnector {
 
+    private const val TAG = "WifiOverlayConnect"
+
     private var activeCallback: ConnectivityManager.NetworkCallback? = null
 
     fun connect(context: Context, ssid: String, password: String?, timeoutMs: Int = 20000): Boolean {
@@ -30,6 +33,7 @@ object WifiConnector {
         activeCallback?.let {
             try {
                 cm.unregisterNetworkCallback(it)
+                Log.d(TAG, "unregistered previous callback before new request")
             } catch (_: Exception) {
             }
         }
@@ -48,22 +52,41 @@ object WifiConnector {
 
         val latch = CountDownLatch(1)
         var success = false
+        var resultReason = "no-callback-fired (timed out waiting)"
 
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
+                Log.d(TAG, "onAvailable: network=$network ssid=$ssid")
                 success = true
+                resultReason = "onAvailable"
                 if (latch.count > 0) latch.countDown()
             }
 
             override fun onUnavailable() {
+                Log.d(TAG, "onUnavailable: ssid=$ssid (system gave up matching/connecting)")
                 success = false
+                resultReason = "onUnavailable"
                 if (latch.count > 0) latch.countDown()
+            }
+
+            override fun onLosing(network: Network, maxMsToLive: Int) {
+                Log.d(TAG, "onLosing: network=$network maxMsToLive=$maxMsToLive ssid=$ssid")
+            }
+
+            override fun onLost(network: Network) {
+                Log.d(TAG, "onLost: network=$network ssid=$ssid")
+            }
+
+            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+                Log.d(TAG, "onCapabilitiesChanged: network=$network caps=$caps ssid=$ssid")
             }
         }
         activeCallback = callback
 
+        Log.d(TAG, "requestNetwork start: ssid=$ssid hasPassword=${!password.isNullOrEmpty()} timeoutMs=$timeoutMs")
         cm.requestNetwork(request, callback, timeoutMs)
-        latch.await(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
+        val latchOk = latch.await(timeoutMs.toLong() + 2000, TimeUnit.MILLISECONDS)
+        Log.d(TAG, "connect() returning: ssid=$ssid success=$success reason=$resultReason latchTimedOut=${!latchOk}")
         return success
     }
 }
