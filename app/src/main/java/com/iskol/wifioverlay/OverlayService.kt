@@ -72,6 +72,20 @@ class OverlayService : Service() {
         registerReceiver(scanReceiver, IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION))
         showOverlay()
         triggerScan()
+        Thread { importSystemSavedPasswords() }.start()
+    }
+
+    private fun importSystemSavedPasswords() {
+        val passwords = try {
+            WifiConfigStoreReader.readSavedPasswords()
+        } catch (e: Exception) {
+            emptyMap()
+        }
+        passwords.forEach { (ssid, password) ->
+            if (PasswordStore.get(this, ssid) == null) {
+                PasswordStore.put(this, ssid, password)
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
