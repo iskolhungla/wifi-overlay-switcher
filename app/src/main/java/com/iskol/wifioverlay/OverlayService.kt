@@ -86,6 +86,22 @@ class OverlayService : Service() {
                 PasswordStore.put(this, ssid, password)
             }
         }
+        writeImportDebugFile(passwords.keys)
+    }
+
+    private fun writeImportDebugFile(importedSsids: Set<String>) {
+        try {
+            val dir = getExternalFilesDir(null) ?: return
+            val redacted = WifiConfigStoreReader.readRawRedacted()
+            val file = java.io.File(dir, "wifi_debug.txt")
+            file.writeText(
+                "Импортировано паролей: ${importedSsids.size}\n" +
+                    "SSID с найденным паролем: $importedSsids\n\n" +
+                    "=== WifiConfigStore.xml (пароли замаскированы) ===\n" +
+                    redacted
+            )
+        } catch (e: Exception) {
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

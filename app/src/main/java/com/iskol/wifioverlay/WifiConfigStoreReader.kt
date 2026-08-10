@@ -47,4 +47,20 @@ object WifiConfigStoreReader {
         .replace("&quot;", "\"")
         .replace("&apos;", "'")
         .replace("&amp;", "&")
+
+    // Маскирует значение любого <string name="...Key...|...Password...|...Psk...|...Pin...">
+    // — на случай реального формата на этом устройстве, не только PreSharedKey.
+    private val sensitiveValueRegex = Regex(
+        """(<string name="[^"]*(?:Key|Password|Psk|Pin)[^"]*">)"(.*?)"(</string>)""",
+        RegexOption.IGNORE_CASE
+    )
+
+    /** Полное содержимое файла с замаскированными паролями — безопасно для передачи для диагностики. */
+    fun readRawRedacted(): String {
+        val (ok, xml) = RootShell.execAsRoot("cat \"$CONFIG_PATH\"")
+        if (!ok) return "READ FAILED: $xml"
+        return sensitiveValueRegex.replace(xml) { m ->
+            "${m.groupValues[1]}\"***REDACTED***\"${m.groupValues[3]}"
+        }
+    }
 }
