@@ -267,6 +267,10 @@ class OverlayService : Service() {
         }
         view.findViewById<View>(R.id.btnPasswordConnect).setOnClickListener {
             val pass = input.text.toString().ifBlank { null }
+            if (pass == null) {
+                input.error = getString(R.string.password_required)
+                return@setOnClickListener
+            }
             promptContainer.visibility = View.GONE
             recycler.visibility = View.VISIBLE
             connectAndReport(network, pass)
@@ -277,7 +281,7 @@ class OverlayService : Service() {
         setStatus(getString(R.string.connecting, network.ssid))
         setBusy(true)
         Thread {
-            val ok = WifiConnector.connect(this, network.ssid, password)
+            val ok = WifiConnector.connect(this, network.ssid, password, network.isSecured)
             if (ok && !password.isNullOrEmpty()) {
                 PasswordStore.put(this, network.ssid, password)
             }

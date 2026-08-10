@@ -6,7 +6,8 @@
     <string name="refresh">Обновить</string>
     <string name="close">Закрыть</string>
     <string name="password_hint">Пароль сети</string>
-    <string name="password_hint_saved">Сеть уже знакома системе, но пароль мы не знаем — введи один раз, дальше запомним</string>
+    <string name="password_hint_saved">Сеть знакома системе, но её пароль автоматически найти не удалось — введи один раз, дальше запомним</string>
+    <string name="password_required">Введите пароль</string>
     <string name="cancel">Отмена</string>
     <string name="connect">Подключить</string>
     <string name="connecting">Подключение к %1$s…</string>

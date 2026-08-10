@@ -27,7 +27,12 @@ object WifiConnector {
 
     private var activeCallback: ConnectivityManager.NetworkCallback? = null
 
-    fun connect(context: Context, ssid: String, password: String?, timeoutMs: Int = 20000): Boolean {
+    fun connect(context: Context, ssid: String, password: String?, secured: Boolean, timeoutMs: Int = 20000): Boolean {
+        if (secured && password.isNullOrEmpty()) {
+            Log.d(TAG, "connect() aborted: secured network without a password, would never match — ssid=$ssid")
+            return false
+        }
+
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
         activeCallback?.let {
