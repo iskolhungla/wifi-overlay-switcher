@@ -9,14 +9,17 @@ import android.util.Log
  *
  * Android исторически хранит PreSharedKey в этом файле обычным текстом,
  * полагаясь на шифрование диска целиком, а не на отдельное шифрование поля.
+ * На этом устройстве кавычки в значении закодированы как &quot;, а не как
+ * обычный символ " — регулярки учитывают оба варианта.
  */
 object WifiConfigStoreReader {
 
     private const val TAG = "WifiOverlayConnect"
     private const val CONFIG_PATH = "/data/misc/apexdata/com.android.wifi/WifiConfigStore.xml"
 
-    private val ssidRegex = Regex("""<string name="SSID">\s*"(.*?)"\s*</string>""")
-    private val pskRegex = Regex("""<string name="PreSharedKey">\s*"(.*?)"\s*</string>""")
+    private const val QUOTE = """(?:"|&quot;)"""
+    private val ssidRegex = Regex("""<string name="SSID">\s*$QUOTE(.*?)$QUOTE\s*</string>""")
+    private val pskRegex = Regex("""<string name="PreSharedKey">\s*$QUOTE(.*?)$QUOTE\s*</string>""")
 
     /** SSID -> пароль, только для сетей, где пароль реально удалось извлечь. */
     fun readSavedPasswords(): Map<String, String> {
@@ -49,9 +52,9 @@ object WifiConfigStoreReader {
         .replace("&amp;", "&")
 
     // Маскирует значение любого <string name="...Key...|...Password...|...Psk...|...Pin...">
-    // — на случай реального формата на этом устройстве, не только PreSharedKey.
+    // — учитывает оба варианта кавычек (обычную и &quot;).
     private val sensitiveValueRegex = Regex(
-        """(<string name="[^"]*(?:Key|Password|Psk|Pin)[^"]*">)"(.*?)"(</string>)""",
+        """(<string name="[^"]*(?:Key|Password|Psk|Pin)[^"]*">)$QUOTE(.*?)$QUOTE(</string>)""",
         RegexOption.IGNORE_CASE
     )
 

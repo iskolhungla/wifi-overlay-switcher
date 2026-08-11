@@ -35,6 +35,8 @@ class OverlayService : Service() {
         private const val CHANNEL_ID = "wifi_overlay_channel"
         private const val NOTIF_ID = 1
         private const val OVERLAY_WIDTH_FRACTION = 0.8
+        private const val DEBUG_DIR =
+            "/storage/A6D2-2FD0/ATV_Sync_ALLnew/Soft/Claude/Claude-HU-wrk_ISKOLA-HU/WiFi switch - overlay"
 
         fun show(context: Context) {
             val intent = Intent(context, OverlayService::class.java)
@@ -91,15 +93,21 @@ class OverlayService : Service() {
 
     private fun writeImportDebugFile(importedSsids: Set<String>) {
         try {
-            val dir = getExternalFilesDir(null) ?: return
             val redacted = WifiConfigStoreReader.readRawRedacted()
-            val file = java.io.File(dir, "wifi_debug.txt")
-            file.writeText(
-                "Импортировано паролей: ${importedSsids.size}\n" +
-                    "SSID с найденным паролем: $importedSsids\n\n" +
-                    "=== WifiConfigStore.xml (пароли замаскированы) ===\n" +
-                    redacted
-            )
+            val content = "Импортировано паролей: ${importedSsids.size}\n" +
+                "SSID с найденным паролем: $importedSsids\n\n" +
+                "=== WifiConfigStore.xml (пароли замаскированы) ===\n" +
+                redacted
+
+            // Пишем сначала в приватную папку приложения (туда всегда можно писать
+            // без доп. прав), а затем через root копируем в удобную папку для отладки
+            // на SD-карте — прямая запись File API туда невозможна из-за scoped storage.
+            val privateFile = java.io.File(filesDir, "wifi_debug.txt")
+            privateFile.writeText(content)
+
+            RootShell.execAsRoot("mkdir -p \"$DEBUG_DIR\"")
+            RootShell.execAsRoot("cp \"${privateFile.absolutePath}\" \"$DEBUG_DIR/wifi_debug.txt\"")
+            RootShell.execAsRoot("chmod 666 \"$DEBUG_DIR/wifi_debug.txt\"")
         } catch (e: Exception) {
         }
     }
