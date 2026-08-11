@@ -24,6 +24,8 @@ import android.view.WindowManager
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -181,8 +183,43 @@ class OverlayService : Service() {
         view.findViewById<View>(R.id.btnRefresh).setOnClickListener { triggerScan() }
         view.findViewById<View>(R.id.btnDetailClose).setOnClickListener { hideNetworkDetail() }
         view.findViewById<View>(R.id.btnDetailCopyAll).setOnClickListener { copyAllDetailFields() }
+        view.findViewById<View>(R.id.btnSettings).setOnClickListener { showSettings() }
+        view.findViewById<View>(R.id.btnSettingsClose).setOnClickListener { hideSettings() }
+        setupSettingsControls(view)
 
         windowManager.addView(view, params)
+    }
+
+    private fun setupSettingsControls(view: View) {
+        val rgConnectMode = view.findViewById<RadioGroup>(R.id.rgConnectMode)
+        val rbSpecifier = view.findViewById<RadioButton>(R.id.rbSpecifier)
+        val rbSuggestion = view.findViewById<RadioButton>(R.id.rbSuggestion)
+
+        when (AppSettings.getConnectMode(this)) {
+            AppSettings.ConnectMode.SPECIFIER -> rbSpecifier.isChecked = true
+            AppSettings.ConnectMode.SUGGESTION -> rbSuggestion.isChecked = true
+        }
+
+        rgConnectMode.setOnCheckedChangeListener { _, checkedId ->
+            val mode = if (checkedId == R.id.rbSuggestion) {
+                AppSettings.ConnectMode.SUGGESTION
+            } else {
+                AppSettings.ConnectMode.SPECIFIER
+            }
+            AppSettings.setConnectMode(this, mode)
+        }
+    }
+
+    private fun showSettings() {
+        val view = overlayView ?: return
+        view.findViewById<View>(R.id.recyclerNetworks).visibility = View.GONE
+        view.findViewById<View>(R.id.settingsContainer).visibility = View.VISIBLE
+    }
+
+    private fun hideSettings() {
+        val view = overlayView ?: return
+        view.findViewById<View>(R.id.settingsContainer).visibility = View.GONE
+        view.findViewById<View>(R.id.recyclerNetworks).visibility = View.VISIBLE
     }
 
     private fun dismissOverlay() {
@@ -305,7 +342,12 @@ class OverlayService : Service() {
         setStatus(getString(R.string.connecting, network.ssid))
         setBusy(true)
         Thread {
-            val ok = WifiConnector.connect(this, network.ssid, password, network.isSecured)
+            val ok = when (AppSettings.getConnectMode(this)) {
+                AppSettings.ConnectMode.SUGGESTION ->
+                    WifiSuggestionConnector.connect(this, network.ssid, password, network.isSecured)
+                AppSettings.ConnectMode.SPECIFIER ->
+                    WifiConnector.connect(this, network.ssid, password, network.isSecured)
+            }
             if (ok && !password.isNullOrEmpty()) {
                 PasswordStore.put(this, network.ssid, password)
             }

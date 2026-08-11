@@ -36,4 +36,9 @@
     <string name="detail_unknown_title">Нет данных</string>
     <string name="detail_unknown_body">Эта сеть не сохранена и не подключена — подробностей о ней нет.</string>
     <string name="copied">Скопировано</string>
+    <string name="settings">Настройки</string>
+    <string name="settings_title">Настройки</string>
+    <string name="settings_connect_mode_label">Способ подключения</string>
+    <string name="settings_mode_specifier">Мгновенно (системный диалог на каждую сеть)</string>
+    <string name="settings_mode_suggestion">Без диалогов (система переключает сама, чуть медленнее)</string>
 </resources>
