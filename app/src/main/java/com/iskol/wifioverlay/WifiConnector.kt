@@ -29,26 +29,36 @@ import java.util.concurrent.TimeUnit
 object WifiConnector {
 
     private const val TAG = "WifiOverlayConnect"
+    private const val FAST_FAIL_THRESHOLD_MS = 5000
 
     private var activeCallback: ConnectivityManager.NetworkCallback? = null
 
-    fun connect(context: Context, ssid: String, password: String?, secured: Boolean, timeoutMs: Int = 15000): Boolean {
+    fun connect(context: Context, ssid: String, password: String?, secured: Boolean, timeoutMs: Int = 20000): Boolean {
         if (secured && password.isNullOrEmpty()) {
             Log.d(TAG, "connect() aborted: secured network without a password, would never match — ssid=$ssid")
             return false
         }
 
-        repeat(2) { attempt ->
-            if (attempt > 0) {
-                Log.d(TAG, "connect() retrying after fresh scan: ssid=$ssid attempt=${attempt + 1}")
-                triggerFreshScan(context)
-                Thread.sleep(2000)
-            }
-            if (attemptConnect(context, ssid, password, timeoutMs)) {
-                return true
-            }
+        val firstStart = System.currentTimeMillis()
+        if (attemptConnect(context, ssid, password, timeoutMs)) {
+            return true
         }
-        return false
+        val firstElapsedMs = System.currentTimeMillis() - firstStart
+
+        // Повторяем автоматически только если первая попытка провалилась БЫСТРО —
+        // это похоже на отказ по устаревшему кэшу сканирования, а не на то, что
+        // пользователь как раз сейчас взаимодействует с системным диалогом.
+        // Если попытка шла долго — скорее всего это был живой диалог, и повторный
+        // запрос сейчас только оборвёт его ("Приложение отменило запрос").
+        if (firstElapsedMs > FAST_FAIL_THRESHOLD_MS) {
+            Log.d(TAG, "connect(): first attempt took ${firstElapsedMs}ms (likely real user interaction) — not auto-retrying")
+            return false
+        }
+
+        Log.d(TAG, "connect(): first attempt failed fast (${firstElapsedMs}ms) — retrying once after a fresh scan")
+        triggerFreshScan(context)
+        Thread.sleep(2000)
+        return attemptConnect(context, ssid, password, timeoutMs)
     }
 
     private fun triggerFreshScan(context: Context) {
