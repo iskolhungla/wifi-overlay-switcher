@@ -199,6 +199,14 @@
             android:layout_height="wrap_content">
 
             <RadioButton
+                android:id="@+id/rbPrivileged"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:buttonTint="#FFFFFF"
+                android:text="@string/settings_mode_privileged"
+                android:textColor="#FFFFFF" />
+
+            <RadioButton
                 android:id="@+id/rbSpecifier"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -214,6 +222,16 @@
                 android:text="@string/settings_mode_suggestion"
                 android:textColor="#FFFFFF" />
         </RadioGroup>
+
+        <TextView
+            android:id="@+id/tvPrivilegedWarning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="6dp"
+            android:text="@string/settings_privileged_warning"
+            android:textColor="#FFB74D"
+            android:textSize="11sp"
+            android:visibility="gone" />
 
         <LinearLayout
             android:layout_width="match_parent"

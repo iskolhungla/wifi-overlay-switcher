@@ -192,21 +192,31 @@ class OverlayService : Service() {
 
     private fun setupSettingsControls(view: View) {
         val rgConnectMode = view.findViewById<RadioGroup>(R.id.rgConnectMode)
+        val rbPrivileged = view.findViewById<RadioButton>(R.id.rbPrivileged)
         val rbSpecifier = view.findViewById<RadioButton>(R.id.rbSpecifier)
         val rbSuggestion = view.findViewById<RadioButton>(R.id.rbSuggestion)
+        val warning = view.findViewById<TextView>(R.id.tvPrivilegedWarning)
 
         when (AppSettings.getConnectMode(this)) {
+            AppSettings.ConnectMode.PRIVILEGED -> rbPrivileged.isChecked = true
             AppSettings.ConnectMode.SPECIFIER -> rbSpecifier.isChecked = true
             AppSettings.ConnectMode.SUGGESTION -> rbSuggestion.isChecked = true
         }
 
+        fun updateWarning() {
+            val isPrivilegedInstall = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
+            warning.visibility = if (rbPrivileged.isChecked && !isPrivilegedInstall) View.VISIBLE else View.GONE
+        }
+        updateWarning()
+
         rgConnectMode.setOnCheckedChangeListener { _, checkedId ->
-            val mode = if (checkedId == R.id.rbSuggestion) {
-                AppSettings.ConnectMode.SUGGESTION
-            } else {
-                AppSettings.ConnectMode.SPECIFIER
+            val mode = when (checkedId) {
+                R.id.rbSuggestion -> AppSettings.ConnectMode.SUGGESTION
+                R.id.rbSpecifier -> AppSettings.ConnectMode.SPECIFIER
+                else -> AppSettings.ConnectMode.PRIVILEGED
             }
             AppSettings.setConnectMode(this, mode)
+            updateWarning()
         }
     }
 
@@ -343,6 +353,8 @@ class OverlayService : Service() {
         setBusy(true)
         Thread {
             val ok = when (AppSettings.getConnectMode(this)) {
+                AppSettings.ConnectMode.PRIVILEGED ->
+                    WifiPrivilegedConnector.connect(this, network.ssid, password, network.isSecured)
                 AppSettings.ConnectMode.SUGGESTION ->
                     WifiSuggestionConnector.connect(this, network.ssid, password, network.isSecured)
                 AppSettings.ConnectMode.SPECIFIER ->
