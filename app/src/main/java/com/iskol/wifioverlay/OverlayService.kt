@@ -368,7 +368,7 @@ class OverlayService : Service() {
                     if (ok) getString(R.string.connected, network.ssid)
                     else getString(R.string.connect_failed, network.ssid)
                 )
-                triggerScan()
+                mainHandler.postDelayed({ triggerScan() }, 2000)
             }
         }.start()
     }
