@@ -31,6 +31,7 @@ object WifiPrivilegedConnector {
             SSID = "\"$ssid\""
             if (secured && !password.isNullOrEmpty()) {
                 preSharedKey = "\"$password\""
+                allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK)
             } else {
                 allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE)
             }
