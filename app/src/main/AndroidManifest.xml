@@ -19,6 +19,17 @@
         tools:targetApi="34" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Действуют только когда приложение установлено как привилегированное
+         системное (Magisk-модуль, /system/priv-app) и одновременно разрешены
+         в system/etc/permissions/privapp-permissions-*.xml — иначе система их
+         тихо не выдаст. Нужны для бездиалогового подключения (WifiPrivilegedConnector). -->
+    <uses-permission android:name="android.permission.NETWORK_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.NETWORK_SETUP_WIZARD"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.OVERRIDE_WIFI_CONFIG"
+        tools:ignore="ProtectedPermissions" />
+
     <application
         android:allowBackup="false"
         android:icon="@drawable/ic_wifi_tile"
