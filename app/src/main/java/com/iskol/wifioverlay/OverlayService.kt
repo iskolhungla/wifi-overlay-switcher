@@ -58,6 +58,7 @@ class OverlayService : Service() {
     private lateinit var wifiManager: WifiManager
     private lateinit var adapter: NetworkAdapter
     private var overlayView: View? = null
+    private var previousConnectedSsid: String? = null
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private val scanReceiver = object : BroadcastReceiver() {
@@ -182,6 +183,7 @@ class OverlayService : Service() {
         view.findViewById<View>(R.id.btnClose).setOnClickListener { dismissOverlay() }
         view.findViewById<View>(R.id.btnRefresh).setOnClickListener { triggerScan() }
         view.findViewById<View>(R.id.btnDetailClose).setOnClickListener { hideNetworkDetail() }
+        view.findViewById<View>(R.id.btnDetailBack).setOnClickListener { hideNetworkDetail() }
         view.findViewById<View>(R.id.btnDetailCopyAll).setOnClickListener { copyAllDetailFields() }
         view.findViewById<View>(R.id.btnSettings).setOnClickListener { showSettings() }
         view.findViewById<View>(R.id.btnSettingsClose).setOnClickListener { hideSettings() }
@@ -274,6 +276,8 @@ class OverlayService : Service() {
             val currentSsid = RootWifiControl.currentSsid()
             val savedNames = RootWifiControl.listSavedNetworkNames()
 
+            trackConnectionTransition(currentSsid, scanEntries)
+
             val items = scanEntries
                 .distinctBy { it.ssid }
                 .map { entry ->
@@ -281,6 +285,7 @@ class OverlayService : Service() {
                         ssid = entry.ssid,
                         isSecured = entry.secured,
                         level = entry.rssi,
+                        frequency = entry.frequency,
                         isConnected = entry.ssid == currentSsid,
                         isSaved = savedNames.contains(entry.ssid)
                     )
@@ -299,6 +304,22 @@ class OverlayService : Service() {
                 )
             }
         }.start()
+    }
+
+    /** Фиксирует моменты подключения/отключения — лучшее из доступного, только пока открыт оверлей. */
+    private fun trackConnectionTransition(currentSsid: String?, scanEntries: List<RootWifiControl.ScanEntry>) {
+        val previous = previousConnectedSsid
+        if (currentSsid == previous) return
+
+        val now = System.currentTimeMillis()
+        if (previous != null) {
+            ConnectionHistory.recordDisconnected(this, previous, now)
+        }
+        if (currentSsid != null) {
+            val matching = scanEntries.firstOrNull { it.ssid == currentSsid }
+            ConnectionHistory.recordConnected(this, currentSsid, now, matching?.frequency, matching?.secured)
+        }
+        previousConnectedSsid = currentSsid
     }
 
     private fun onNetworkSelected(network: NetworkItem) {
@@ -390,9 +411,24 @@ class OverlayService : Service() {
                 collectLiveConnectionInfo().forEach { (label, value) ->
                     addDetailRow(fieldsContainer, label, value)
                 }
+                addConnectionDurationRow(fieldsContainer, network.ssid)
             }
             network.isSaved -> {
-                addDetailRow(fieldsContainer, getString(R.string.detail_archived_title), getString(R.string.detail_archived_body))
+                val history = ConnectionHistory.get(this, network.ssid)
+                if (history?.connectedAt != null || history?.disconnectedAt != null) {
+                    if (history.connectedAt != null) {
+                        addDetailRow(fieldsContainer, getString(R.string.detail_last_connected), formatDateTime(history.connectedAt))
+                    }
+                    if (history.disconnectedAt != null) {
+                        addDetailRow(fieldsContainer, getString(R.string.detail_last_disconnected), formatDateTime(history.disconnectedAt))
+                    }
+                    history.frequency?.let {
+                        addDetailRow(fieldsContainer, getString(R.string.detail_network_params), "${it} МГц, канал ${NetworkAdapter.frequencyToChannel(it)}")
+                    }
+                    addDetailRow(fieldsContainer, getString(R.string.detail_archived_title), getString(R.string.detail_archived_note))
+                } else {
+                    addDetailRow(fieldsContainer, getString(R.string.detail_archived_title), getString(R.string.detail_archived_body))
+                }
             }
             else -> {
                 addDetailRow(fieldsContainer, getString(R.string.detail_unknown_title), getString(R.string.detail_unknown_body))
@@ -421,7 +457,44 @@ class OverlayService : Service() {
         if (dhcp.dns1 != 0) list.add(getString(R.string.detail_dns1) to fmt(dhcp.dns1))
         if (dhcp.dns2 != 0) list.add(getString(R.string.detail_dns2) to fmt(dhcp.dns2))
         if (dhcp.serverAddress != 0) list.add(getString(R.string.detail_dhcp_server) to fmt(dhcp.serverAddress))
+
+        @Suppress("DEPRECATION")
+        val info = wifiManager.connectionInfo
+        if (info != null) {
+            val speedText = if (Build.VERSION.SDK_INT >= 29) {
+                val tx = info.txLinkSpeedMbps
+                val rx = info.rxLinkSpeedMbps
+                "↑${if (tx > 0) tx else "?"} / ↓${if (rx > 0) rx else "?"} Мбит/с"
+            } else {
+                "${info.linkSpeed} Мбит/с"
+            }
+            list.add(getString(R.string.detail_speed) to speedText)
+        }
         return list
+    }
+
+    private fun addConnectionDurationRow(container: LinearLayout, ssid: String) {
+        val history = ConnectionHistory.get(this, ssid) ?: return
+        val connectedAt = history.connectedAt ?: return
+        addDetailRow(container, getString(R.string.detail_connected_since), formatDateTime(connectedAt))
+        addDetailRow(container, getString(R.string.detail_duration), formatDuration(System.currentTimeMillis() - connectedAt))
+    }
+
+    private fun formatDateTime(millis: Long): String {
+        val fmt = java.text.SimpleDateFormat("dd.MM.yyyy HH:mm:ss", java.util.Locale.getDefault())
+        return fmt.format(java.util.Date(millis))
+    }
+
+    private fun formatDuration(millis: Long): String {
+        val totalSeconds = millis / 1000
+        val hours = totalSeconds / 3600
+        val minutes = (totalSeconds % 3600) / 60
+        val seconds = totalSeconds % 60
+        return when {
+            hours > 0 -> "${hours} ч ${minutes} мин"
+            minutes > 0 -> "${minutes} мин ${seconds} сек"
+            else -> "${seconds} сек"
+        }
     }
 
     private fun addDetailRow(container: LinearLayout, label: String, value: String) {

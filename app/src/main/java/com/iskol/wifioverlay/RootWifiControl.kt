@@ -4,7 +4,7 @@ object RootWifiControl {
 
     private const val SHELL_UID = 2000
 
-    data class ScanEntry(val ssid: String, val rssi: Int, val secured: Boolean)
+    data class ScanEntry(val ssid: String, val rssi: Int, val frequency: Int, val secured: Boolean)
 
     /**
      * Список видимых сетей через `cmd wifi list-scan-results` (обходит урезанный
@@ -24,6 +24,7 @@ object RootWifiControl {
             if (line.isBlank() || line.trimStart().startsWith("BSSID")) return@forEach
 
             val match = lineRegex.find(line) ?: return@forEach
+            val frequency = match.groupValues[2].toIntOrNull() ?: return@forEach
             val rssi = match.groupValues[3].toIntOrNull() ?: return@forEach
             val rest = match.groupValues[5]
             val flagsStart = rest.indexOf('[')
@@ -35,7 +36,7 @@ object RootWifiControl {
             val secured = flags.contains("WPA") || flags.contains("RSN") ||
                 flags.contains("WEP") || flags.contains("EAP") || flags.contains("SAE")
 
-            entries.add(ScanEntry(ssid, rssi, secured))
+            entries.add(ScanEntry(ssid, rssi, frequency, secured))
         }
         return entries
     }

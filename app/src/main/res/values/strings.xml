@@ -36,6 +36,14 @@
     <string name="detail_unknown_title">Нет данных</string>
     <string name="detail_unknown_body">Эта сеть не сохранена и не подключена — подробностей о ней нет.</string>
     <string name="copied">Скопировано</string>
+    <string name="back">Назад</string>
+    <string name="detail_speed">Скорость</string>
+    <string name="detail_connected_since">Подключено с</string>
+    <string name="detail_duration">Длительность</string>
+    <string name="detail_last_connected">Последнее подключение</string>
+    <string name="detail_last_disconnected">Последнее отключение</string>
+    <string name="detail_archived_note">Архивная запись — данные могут быть неактуальны</string>
+    <string name="detail_network_params">Параметры сети</string>
     <string name="settings">Настройки</string>
     <string name="settings_title">Настройки</string>
     <string name="settings_connect_mode_label">Способ подключения</string>

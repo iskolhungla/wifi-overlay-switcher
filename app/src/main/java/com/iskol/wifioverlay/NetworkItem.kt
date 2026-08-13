@@ -4,6 +4,7 @@ data class NetworkItem(
     val ssid: String,
     val isSecured: Boolean,
     val level: Int,
+    val frequency: Int,
     val isConnected: Boolean,
     val isSaved: Boolean
 )
