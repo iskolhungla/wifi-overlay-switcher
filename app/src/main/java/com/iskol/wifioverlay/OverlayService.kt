@@ -278,9 +278,31 @@ class OverlayService : Service() {
     private fun fetchChannelWidths(): Map<String, Int> {
         return try {
             @Suppress("DEPRECATION", "MissingPermission")
-            wifiManager.scanResults.associate { it.SSID to channelWidthConstantToMhz(it.channelWidth) }
+            val results = wifiManager.scanResults
+            writeChannelWidthDebug(results)
+            results.associate { it.SSID to channelWidthConstantToMhz(it.channelWidth) }
         } catch (e: Exception) {
+            writeChannelWidthDebug(null, e)
             emptyMap()
+        }
+    }
+
+    private fun writeChannelWidthDebug(results: List<android.net.wifi.ScanResult>?, error: Exception? = null) {
+        try {
+            val content = if (error != null) {
+                "wifiManager.scanResults threw: ${error}"
+            } else {
+                "wifiManager.scanResults size=${results?.size}\n" +
+                    results?.take(5)?.joinToString("\n") {
+                        "ssid=${it.SSID} channelWidth=${it.channelWidth} freq=${it.frequency}"
+                    }
+            }
+            val privateFile = java.io.File(filesDir, "channel_width_debug.txt")
+            privateFile.writeText(content)
+            RootShell.execAsRoot("mkdir -p \"$DEBUG_DIR\"")
+            RootShell.execAsRoot("cp \"${privateFile.absolutePath}\" \"$DEBUG_DIR/channel_width_debug.txt\"")
+            RootShell.execAsRoot("chmod 666 \"$DEBUG_DIR/channel_width_debug.txt\"")
+        } catch (_: Exception) {
         }
     }
 
