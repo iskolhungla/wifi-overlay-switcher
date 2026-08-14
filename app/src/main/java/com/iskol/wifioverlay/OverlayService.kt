@@ -58,7 +58,6 @@ class OverlayService : Service() {
     private lateinit var wifiManager: WifiManager
     private lateinit var adapter: NetworkAdapter
     private var overlayView: View? = null
-    private var previousConnectedSsid: String? = null
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private val scanReceiver = object : BroadcastReceiver() {
@@ -276,8 +275,6 @@ class OverlayService : Service() {
             val currentSsid = RootWifiControl.currentSsid()
             val savedNames = RootWifiControl.listSavedNetworkNames()
 
-            trackConnectionTransition(currentSsid, scanEntries)
-
             val items = scanEntries
                 .distinctBy { it.ssid }
                 .map { entry ->
@@ -304,22 +301,6 @@ class OverlayService : Service() {
                 )
             }
         }.start()
-    }
-
-    /** Фиксирует моменты подключения/отключения — лучшее из доступного, только пока открыт оверлей. */
-    private fun trackConnectionTransition(currentSsid: String?, scanEntries: List<RootWifiControl.ScanEntry>) {
-        val previous = previousConnectedSsid
-        if (currentSsid == previous) return
-
-        val now = System.currentTimeMillis()
-        if (previous != null) {
-            ConnectionHistory.recordDisconnected(this, previous, now)
-        }
-        if (currentSsid != null) {
-            val matching = scanEntries.firstOrNull { it.ssid == currentSsid }
-            ConnectionHistory.recordConnected(this, currentSsid, now, matching?.frequency, matching?.secured)
-        }
-        previousConnectedSsid = currentSsid
     }
 
     private fun onNetworkSelected(network: NetworkItem) {
@@ -414,13 +395,13 @@ class OverlayService : Service() {
                 addConnectionDurationRow(fieldsContainer, network.ssid)
             }
             network.isSaved -> {
-                val history = ConnectionHistory.get(this, network.ssid)
-                if (history?.connectedAt != null || history?.disconnectedAt != null) {
-                    if (history.connectedAt != null) {
-                        addDetailRow(fieldsContainer, getString(R.string.detail_last_connected), formatDateTime(history.connectedAt))
+                val history = SystemConnectionHistory.historyFor(network.ssid)
+                if (history != null) {
+                    if (history.lastConnectedAt != null) {
+                        addDetailRow(fieldsContainer, getString(R.string.detail_last_connected), formatDateTime(history.lastConnectedAt))
                     }
-                    if (history.disconnectedAt != null) {
-                        addDetailRow(fieldsContainer, getString(R.string.detail_last_disconnected), formatDateTime(history.disconnectedAt))
+                    if (history.lastDisconnectedAt != null) {
+                        addDetailRow(fieldsContainer, getString(R.string.detail_last_disconnected), formatDateTime(history.lastDisconnectedAt))
                     }
                     history.frequency?.let {
                         addDetailRow(fieldsContainer, getString(R.string.detail_network_params), "${it} МГц, канал ${NetworkAdapter.frequencyToChannel(it)}")
@@ -474,8 +455,7 @@ class OverlayService : Service() {
     }
 
     private fun addConnectionDurationRow(container: LinearLayout, ssid: String) {
-        val history = ConnectionHistory.get(this, ssid) ?: return
-        val connectedAt = history.connectedAt ?: return
+        val connectedAt = SystemConnectionHistory.historyFor(ssid)?.lastConnectedAt ?: return
         addDetailRow(container, getString(R.string.detail_connected_since), formatDateTime(connectedAt))
         addDetailRow(container, getString(R.string.detail_duration), formatDuration(System.currentTimeMillis() - connectedAt))
     }
