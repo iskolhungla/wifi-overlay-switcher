@@ -275,44 +275,17 @@ class OverlayService : Service() {
      * привилегированное системное приложение, пробуем его напрямую; если вдруг
      * всё равно пусто, просто не показываем ширину канала (не критично).
      */
+    /**
+     * Ширина канала: раньше пробовали через WifiManager.scanResults(), но даже
+     * под привилегиями он оказался пуст на этой прошивке (проверено). Источник —
+     * `iw dev wlan0 scan` напрямую (см. IwScanReader).
+     */
     private fun fetchChannelWidths(): Map<String, Int> {
         return try {
-            @Suppress("DEPRECATION", "MissingPermission")
-            val results = wifiManager.scanResults
-            writeChannelWidthDebug(results)
-            results.associate { it.SSID to channelWidthConstantToMhz(it.channelWidth) }
+            IwScanReader.readChannelWidths()
         } catch (e: Exception) {
-            writeChannelWidthDebug(null, e)
             emptyMap()
         }
-    }
-
-    private fun writeChannelWidthDebug(results: List<android.net.wifi.ScanResult>?, error: Exception? = null) {
-        try {
-            val content = if (error != null) {
-                "wifiManager.scanResults threw: ${error}"
-            } else {
-                "wifiManager.scanResults size=${results?.size}\n" +
-                    results?.take(5)?.joinToString("\n") {
-                        "ssid=${it.SSID} channelWidth=${it.channelWidth} freq=${it.frequency}"
-                    }
-            }
-            val privateFile = java.io.File(filesDir, "channel_width_debug.txt")
-            privateFile.writeText(content)
-            RootShell.execAsRoot("mkdir -p \"$DEBUG_DIR\"")
-            RootShell.execAsRoot("cp \"${privateFile.absolutePath}\" \"$DEBUG_DIR/channel_width_debug.txt\"")
-            RootShell.execAsRoot("chmod 666 \"$DEBUG_DIR/channel_width_debug.txt\"")
-        } catch (_: Exception) {
-        }
-    }
-
-    private fun channelWidthConstantToMhz(constant: Int): Int = when (constant) {
-        android.net.wifi.ScanResult.CHANNEL_WIDTH_20MHZ -> 20
-        android.net.wifi.ScanResult.CHANNEL_WIDTH_40MHZ -> 40
-        android.net.wifi.ScanResult.CHANNEL_WIDTH_80MHZ -> 80
-        android.net.wifi.ScanResult.CHANNEL_WIDTH_160MHZ -> 160
-        android.net.wifi.ScanResult.CHANNEL_WIDTH_80MHZ_PLUS_MHZ -> 160
-        else -> 20
     }
 
     private fun refreshNetworks() {
