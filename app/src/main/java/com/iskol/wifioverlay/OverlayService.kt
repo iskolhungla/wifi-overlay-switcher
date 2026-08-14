@@ -219,6 +219,12 @@ class OverlayService : Service() {
             AppSettings.setConnectMode(this, mode)
             updateWarning()
         }
+
+        val cbConnectionLog = view.findViewById<android.widget.CheckBox>(R.id.cbConnectionLog)
+        cbConnectionLog.isChecked = AppSettings.isConnectionLogEnabled(this)
+        cbConnectionLog.setOnCheckedChangeListener { _, checked ->
+            AppSettings.setConnectionLogEnabled(this, checked)
+        }
     }
 
     private fun showSettings() {
@@ -418,16 +424,25 @@ class OverlayService : Service() {
             }
             network.isSaved -> {
                 val history = SystemConnectionHistory.historyFor(network.ssid)
-                if (history != null) {
-                    if (history.lastConnectedAt != null) {
-                        addDetailRow(fieldsContainer, getString(R.string.detail_last_connected), formatDateTime(history.lastConnectedAt))
+                val snapshot = NetworkSnapshotStore.get(this, network.ssid)
+                if (history != null || snapshot != null) {
+                    val connectedAt = history?.lastConnectedAt ?: snapshot?.connectedAt
+                    if (connectedAt != null) {
+                        addDetailRow(fieldsContainer, getString(R.string.detail_last_connected), formatDateTime(connectedAt))
                     }
-                    if (history.lastDisconnectedAt != null) {
+                    if (history?.lastDisconnectedAt != null) {
                         addDetailRow(fieldsContainer, getString(R.string.detail_last_disconnected), formatDateTime(history.lastDisconnectedAt))
                     }
-                    history.frequency?.let {
-                        addDetailRow(fieldsContainer, getString(R.string.detail_network_params), "${it} МГц, канал ${NetworkAdapter.frequencyToChannel(it)}")
+                    val freq = snapshot?.frequency ?: history?.frequency
+                    freq?.let {
+                        val widthText = snapshot?.channelWidthMhz?.let { w -> ", $w МГц" } ?: ""
+                        addDetailRow(fieldsContainer, getString(R.string.detail_network_params), "${it} МГц, канал ${NetworkAdapter.frequencyToChannel(it)}$widthText")
                     }
+                    snapshot?.ip?.let { addDetailRow(fieldsContainer, getString(R.string.detail_ip), it) }
+                    snapshot?.gateway?.let { addDetailRow(fieldsContainer, getString(R.string.detail_gateway), it) }
+                    snapshot?.dns1?.let { addDetailRow(fieldsContainer, getString(R.string.detail_dns1), it) }
+                    snapshot?.dns2?.let { addDetailRow(fieldsContainer, getString(R.string.detail_dns2), it) }
+                    snapshot?.linkSpeedMbps?.let { addDetailRow(fieldsContainer, getString(R.string.detail_speed), "$it Мбит/с") }
                     addDetailRow(fieldsContainer, getString(R.string.detail_archived_title), getString(R.string.detail_archived_note))
                 } else {
                     addDetailRow(fieldsContainer, getString(R.string.detail_archived_title), getString(R.string.detail_archived_body))

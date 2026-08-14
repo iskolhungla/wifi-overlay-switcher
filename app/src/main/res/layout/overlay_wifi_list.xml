@@ -250,6 +250,22 @@
             android:textSize="11sp"
             android:visibility="gone" />
 
+        <CheckBox
+            android:id="@+id/cbConnectionLog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:buttonTint="#FFFFFF"
+            android:text="@string/settings_connection_log"
+            android:textColor="#FFFFFF" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_connection_log_hint"
+            android:textColor="#80FFFFFF"
+            android:textSize="11sp" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

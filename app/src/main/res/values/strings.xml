@@ -51,4 +51,6 @@
     <string name="settings_mode_specifier">Мгновенно (системный диалог на каждую сеть)</string>
     <string name="settings_mode_suggestion">Без диалогов (система переключает сама, чуть медленнее)</string>
     <string name="settings_privileged_warning">Похоже, модуль ещё не установлен — сначала поставь Magisk-модуль и перезагрузись, иначе этот режим работать не будет</string>
+    <string name="settings_connection_log">Вести журнал подключений в файл</string>
+    <string name="settings_connection_log_hint">Записывает каждое подключение (любой сети, не только через это приложение) в WiFi switch - overlay/connection_log.txt</string>
 </resources>

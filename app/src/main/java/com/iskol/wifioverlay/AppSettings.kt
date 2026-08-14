@@ -24,4 +24,18 @@ object AppSettings {
             .putString(KEY_CONNECT_MODE, mode.name)
             .apply()
     }
+
+    private const val KEY_LOG_ENABLED = "connection_log_enabled"
+
+    fun isConnectionLogEnabled(context: Context): Boolean {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_LOG_ENABLED, false)
+    }
+
+    fun setConnectionLogEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_LOG_ENABLED, enabled)
+            .apply()
+    }
 }
