@@ -5,6 +5,7 @@ data class NetworkItem(
     val isSecured: Boolean,
     val level: Int,
     val frequency: Int,
+    val channelWidthMhz: Int?,
     val isConnected: Boolean,
     val isSaved: Boolean
 )

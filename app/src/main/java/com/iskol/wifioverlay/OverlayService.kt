@@ -268,12 +268,38 @@ class OverlayService : Service() {
         overlayView?.findViewById<TextView>(R.id.tvStatus)?.text = text
     }
 
+    /**
+     * Ширина канала есть только в стандартном ScanResult (WifiManager.getScanResults()),
+     * не в текстовом выводе `cmd wifi list-scan-results`. Раньше этот метод был
+     * пуст для сторонних приложений на этой прошивке — теперь, когда мы
+     * привилегированное системное приложение, пробуем его напрямую; если вдруг
+     * всё равно пусто, просто не показываем ширину канала (не критично).
+     */
+    private fun fetchChannelWidths(): Map<String, Int> {
+        return try {
+            @Suppress("DEPRECATION", "MissingPermission")
+            wifiManager.scanResults.associate { it.SSID to channelWidthConstantToMhz(it.channelWidth) }
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
+
+    private fun channelWidthConstantToMhz(constant: Int): Int = when (constant) {
+        android.net.wifi.ScanResult.CHANNEL_WIDTH_20MHZ -> 20
+        android.net.wifi.ScanResult.CHANNEL_WIDTH_40MHZ -> 40
+        android.net.wifi.ScanResult.CHANNEL_WIDTH_80MHZ -> 80
+        android.net.wifi.ScanResult.CHANNEL_WIDTH_160MHZ -> 160
+        android.net.wifi.ScanResult.CHANNEL_WIDTH_80MHZ_PLUS_MHZ -> 160
+        else -> 20
+    }
+
     private fun refreshNetworks() {
         mainHandler.removeCallbacks(fallbackRefreshRunnable)
         Thread {
             val scanEntries = RootWifiControl.scanNetworks()
             val currentSsid = RootWifiControl.currentSsid()
             val savedNames = RootWifiControl.listSavedNetworkNames()
+            val widthBySsid = fetchChannelWidths()
 
             val items = scanEntries
                 .distinctBy { it.ssid }
@@ -283,6 +309,7 @@ class OverlayService : Service() {
                         isSecured = entry.secured,
                         level = entry.rssi,
                         frequency = entry.frequency,
+                        channelWidthMhz = widthBySsid[entry.ssid],
                         isConnected = entry.ssid == currentSsid,
                         isSaved = savedNames.contains(entry.ssid)
                     )

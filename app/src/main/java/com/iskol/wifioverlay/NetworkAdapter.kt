@@ -44,7 +44,8 @@ class NetworkAdapter(
             ssidView.setTextColor(
                 if (item.isSaved) 0xFF66BB6A.toInt() else 0xFFFFFFFF.toInt()
             )
-            signalTextView.text = "${item.level} дБм · ${dbmToPercent(item.level)}% · Канал ${frequencyToChannel(item.frequency)}"
+            val widthText = item.channelWidthMhz?.let { " · ${it} МГц" } ?: ""
+            signalTextView.text = "${item.level} дБм · ${dbmToPercent(item.level)}% · Канал ${frequencyToChannel(item.frequency)}$widthText"
             lockView.visibility = if (item.isSecured) View.VISIBLE else View.GONE
             checkView.visibility = if (item.isConnected) View.VISIBLE else View.GONE
             val iconRes = when {
