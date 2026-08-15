@@ -18,6 +18,7 @@
         android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"
         tools:targetApi="34" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- Действуют только когда приложение установлено как привилегированное
          системное (Magisk-модуль, /system/priv-app) и одновременно разрешены
@@ -84,11 +85,20 @@
             </intent-filter>
         </receiver>
 
+        <service
+            android:name=".WifiLogService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="wifi_connection_logging" />
+        </service>
+
         <receiver
-            android:name=".WifiStateReceiver"
+            android:name=".BootReceiver"
             android:exported="true">
             <intent-filter>
-                <action android:name="android.net.wifi.STATE_CHANGE" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
 

@@ -47,11 +47,15 @@
     <string name="settings">Настройки</string>
     <string name="settings_title">Настройки</string>
     <string name="build_version">Сборка: %1$s (код %2$d)</string>
+    <string name="log_channel_name">Журнал подключений WiFi Overlay</string>
+    <string name="log_notification_title">Ведётся журнал подключений</string>
     <string name="settings_connect_mode_label">Способ подключения</string>
     <string name="settings_mode_privileged">Через root (мгновенно, без диалогов — нужен Magisk-модуль)</string>
     <string name="settings_mode_specifier">Мгновенно (системный диалог на каждую сеть)</string>
     <string name="settings_mode_suggestion">Без диалогов (система переключает сама, чуть медленнее)</string>
     <string name="settings_privileged_warning">Похоже, модуль ещё не установлен — сначала поставь Magisk-модуль и перезагрузись, иначе этот режим работать не будет</string>
     <string name="settings_connection_log">Вести журнал подключений в файл</string>
-    <string name="settings_connection_log_hint">Записывает каждое подключение (любой сети, не только через это приложение) в WiFi switch - overlay/connection_log.txt</string>
+    <string name="settings_connection_log_hint">Записывает каждое подключение (любой сети, не только через это приложение) в connection_log.txt</string>
+    <string name="settings_debug_dump">Писать отладочный файл (wifi_debug.txt)</string>
+    <string name="settings_log_dir_label">Папка для файлов журнала</string>
 </resources>

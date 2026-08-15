@@ -38,4 +38,33 @@ object AppSettings {
             .putBoolean(KEY_LOG_ENABLED, enabled)
             .apply()
     }
+
+    private const val KEY_DEBUG_DUMP_ENABLED = "debug_dump_enabled"
+
+    fun isDebugDumpEnabled(context: Context): Boolean {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_DEBUG_DUMP_ENABLED, true)
+    }
+
+    fun setDebugDumpEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_DEBUG_DUMP_ENABLED, enabled)
+            .apply()
+    }
+
+    private const val KEY_LOG_DIR = "log_directory"
+    const val DEFAULT_LOG_DIR = "/storage/emulated/0/Documents"
+
+    fun getLogDirectory(context: Context): String {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_LOG_DIR, DEFAULT_LOG_DIR) ?: DEFAULT_LOG_DIR
+    }
+
+    fun setLogDirectory(context: Context, path: String) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_LOG_DIR, path)
+            .apply()
+    }
 }

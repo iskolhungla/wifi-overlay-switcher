@@ -37,8 +37,6 @@ class OverlayService : Service() {
         private const val CHANNEL_ID = "wifi_overlay_channel"
         private const val NOTIF_ID = 1
         private const val OVERLAY_WIDTH_FRACTION = 0.8
-        private const val DEBUG_DIR =
-            "/storage/A6D2-2FD0/ATV_Sync_ALLnew/Soft/Claude/Claude-HU-wrk_ISKOLA-HU/WiFi switch - overlay"
 
         fun show(context: Context) {
             val intent = Intent(context, OverlayService::class.java)
@@ -94,6 +92,7 @@ class OverlayService : Service() {
     }
 
     private fun writeImportDebugFile(importedSsids: Set<String>) {
+        if (!AppSettings.isDebugDumpEnabled(this)) return
         try {
             val redacted = WifiConfigStoreReader.readRawRedacted()
             val content = "Импортировано паролей: ${importedSsids.size}\n" +
@@ -102,14 +101,15 @@ class OverlayService : Service() {
                 redacted
 
             // Пишем сначала в приватную папку приложения (туда всегда можно писать
-            // без доп. прав), а затем через root копируем в удобную папку для отладки
-            // на SD-карте — прямая запись File API туда невозможна из-за scoped storage.
+            // без доп. прав), а затем через root копируем в папку из настроек —
+            // прямая запись туда невозможна из-за scoped storage.
             val privateFile = java.io.File(filesDir, "wifi_debug.txt")
             privateFile.writeText(content)
 
-            RootShell.execAsRoot("mkdir -p \"$DEBUG_DIR\"")
-            RootShell.execAsRoot("cp \"${privateFile.absolutePath}\" \"$DEBUG_DIR/wifi_debug.txt\"")
-            RootShell.execAsRoot("chmod 666 \"$DEBUG_DIR/wifi_debug.txt\"")
+            val dir = AppSettings.getLogDirectory(this)
+            RootShell.execAsRoot("mkdir -p \"$dir\"")
+            RootShell.execAsRoot("cp \"${privateFile.absolutePath}\" \"$dir/wifi_debug.txt\"")
+            RootShell.execAsRoot("chmod 666 \"$dir/wifi_debug.txt\"")
         } catch (e: Exception) {
         }
     }
@@ -228,7 +228,31 @@ class OverlayService : Service() {
         cbConnectionLog.isChecked = AppSettings.isConnectionLogEnabled(this)
         cbConnectionLog.setOnCheckedChangeListener { _, checked ->
             AppSettings.setConnectionLogEnabled(this, checked)
+            if (checked) {
+                WifiLogService.start(this)
+            } else {
+                WifiLogService.stop(this)
+            }
         }
+
+        val cbDebugDump = view.findViewById<android.widget.CheckBox>(R.id.cbDebugDump)
+        cbDebugDump.isChecked = AppSettings.isDebugDumpEnabled(this)
+        cbDebugDump.setOnCheckedChangeListener { _, checked ->
+            AppSettings.setDebugDumpEnabled(this, checked)
+        }
+
+        val etLogDir = view.findViewById<EditText>(R.id.etLogDir)
+        etLogDir.setText(AppSettings.getLogDirectory(this))
+        etLogDir.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(s: android.text.Editable?) {
+                val path = s?.toString()?.trim().orEmpty()
+                if (path.isNotEmpty()) {
+                    AppSettings.setLogDirectory(this@OverlayService, path)
+                }
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
     }
 
     private fun showSettings() {

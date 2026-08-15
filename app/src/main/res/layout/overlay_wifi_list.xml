@@ -274,6 +274,34 @@
             android:textColor="#80FFFFFF"
             android:textSize="11sp" />
 
+        <CheckBox
+            android:id="@+id/cbDebugDump"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:buttonTint="#FFFFFF"
+            android:text="@string/settings_debug_dump"
+            android:textColor="#FFFFFF" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="10dp"
+            android:paddingBottom="2dp"
+            android:text="@string/settings_log_dir_label"
+            android:textColor="#B0FFFFFF"
+            android:textSize="12sp" />
+
+        <EditText
+            android:id="@+id/etLogDir"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:singleLine="true"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#80FFFFFF"
+            android:textSize="12sp" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
