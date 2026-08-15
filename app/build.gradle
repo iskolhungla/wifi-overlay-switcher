@@ -3,6 +3,8 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+def ciBuildNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
+
 android {
     namespace 'com.iskol.wifioverlay'
     compileSdk 34
@@ -11,8 +13,8 @@ android {
         applicationId "com.iskol.wifioverlay"
         minSdk 29
         targetSdk 34
-        versionCode (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
-        versionName "build-" + (System.getenv("GITHUB_RUN_NUMBER") ?: "dev")
+        versionCode ciBuildNumber
+        versionName "build-${ciBuildNumber}"
     }
 
     buildTypes {
