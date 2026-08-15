@@ -192,6 +192,10 @@ class OverlayService : Service() {
     }
 
     private fun setupSettingsControls(view: View) {
+        view.findViewById<TextView>(R.id.tvBuildVersion).text = getString(
+            R.string.build_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE
+        )
+
         val rgConnectMode = view.findViewById<RadioGroup>(R.id.rgConnectMode)
         val rbPrivileged = view.findViewById<RadioButton>(R.id.rbPrivileged)
         val rbSpecifier = view.findViewById<RadioButton>(R.id.rbSpecifier)

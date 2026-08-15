@@ -46,6 +46,7 @@
     <string name="detail_network_params">Параметры сети</string>
     <string name="settings">Настройки</string>
     <string name="settings_title">Настройки</string>
+    <string name="build_version">Сборка: %1$s (код %2$d)</string>
     <string name="settings_connect_mode_label">Способ подключения</string>
     <string name="settings_mode_privileged">Через root (мгновенно, без диалогов — нужен Magisk-модуль)</string>
     <string name="settings_mode_specifier">Мгновенно (системный диалог на каждую сеть)</string>

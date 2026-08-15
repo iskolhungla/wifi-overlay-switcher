@@ -203,6 +203,14 @@
             android:textStyle="bold" />
 
         <TextView
+            android:id="@+id/tvBuildVersion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="10dp"
+            android:textColor="#80FFFFFF"
+            android:textSize="11sp" />
+
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:paddingBottom="4dp"

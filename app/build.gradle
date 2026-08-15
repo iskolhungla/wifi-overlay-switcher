@@ -11,8 +11,8 @@ android {
         applicationId "com.iskol.wifioverlay"
         minSdk 29
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        versionCode (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
+        versionName "build-" + (System.getenv("GITHUB_RUN_NUMBER") ?: "dev")
     }
 
     buildTypes {
@@ -36,6 +36,7 @@ android {
 
     buildFeatures {
         viewBinding false
+        buildConfig true
     }
 }
 
