@@ -302,6 +302,22 @@
             android:textColorHint="#80FFFFFF"
             android:textSize="12sp" />
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="14dp"
+            android:paddingBottom="2dp"
+            android:text="@string/settings_adapter_label"
+            android:textColor="#B0FFFFFF"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/tvAdapterCapability"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

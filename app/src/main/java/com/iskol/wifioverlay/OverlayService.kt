@@ -253,6 +253,19 @@ class OverlayService : Service() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
+
+        val tvAdapter = view.findViewById<TextView>(R.id.tvAdapterCapability)
+        tvAdapter.text = "…"
+        Thread {
+            val cap = IwPhyReader.readCapability()
+            mainHandler.post {
+                tvAdapter.text = if (cap.band24MaxWidthMhz != null && cap.band5MaxWidthMhz != null && cap.vhtHighestMbps != null) {
+                    getString(R.string.adapter_capability_format, cap.band24MaxWidthMhz, cap.band5MaxWidthMhz, cap.vhtHighestMbps)
+                } else {
+                    getString(R.string.adapter_capability_unknown)
+                }
+            }
+        }.start()
     }
 
     private fun showSettings() {
