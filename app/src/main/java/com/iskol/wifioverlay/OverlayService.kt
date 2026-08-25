@@ -266,6 +266,56 @@ class OverlayService : Service() {
                 }
             }
         }.start()
+
+        setupHtFixControls(view)
+    }
+
+    private fun setupHtFixControls(view: View) {
+        val tvStatus = view.findViewById<TextView>(R.id.tvHtFixStatus)
+        val btnDiagnose = view.findViewById<Button>(R.id.btnHtDiagnose)
+        val btnInstall = view.findViewById<Button>(R.id.btnHtInstall)
+
+        btnDiagnose.setOnClickListener {
+            tvStatus.text = "…"
+            btnInstall.visibility = View.GONE
+            Thread {
+                val d = HtFixManager.diagnose()
+                mainHandler.post {
+                    val lines = StringBuilder()
+                    if (!d.driverPresent) {
+                        lines.append("Драйвер MTK gen4m (/proc/net/wlan/cfg) не найден — этот фикс не подходит для твоего устройства.")
+                    } else {
+                        lines.append("Драйвер найден. Sta2gBw=${d.currentSta2gBw ?: "?"}, Sta5gBw=${d.currentSta5gBw ?: "?"}\n")
+                        lines.append("Текущая скорость: ${d.currentLinkSpeed ?: "?"}\n")
+                        if (d.scriptExists && !d.scriptIsOurs) {
+                            lines.append("⚠ Найден ЧУЖОЙ скрипт по этому пути — устанавливать НЕ будем, чтобы не создать конфликт.")
+                        } else if (d.scriptExists) {
+                            lines.append("Наш скрипт уже установлен ранее — можно переустановить/применить заново.")
+                            btnInstall.visibility = View.VISIBLE
+                        } else {
+                            lines.append("Скрипта ещё нет — можно установить.")
+                            btnInstall.visibility = View.VISIBLE
+                        }
+                    }
+                    tvStatus.text = lines.toString()
+                }
+            }.start()
+        }
+
+        btnInstall.setOnClickListener {
+            tvStatus.text = "Применяю…"
+            Thread {
+                val scriptOk = HtFixManager.installScript()
+                val appliedOk = HtFixManager.applyNow(wifiManager)
+                mainHandler.post {
+                    tvStatus.text = if (scriptOk && appliedOk) {
+                        "Готово: скрипт установлен (применится и на будущих загрузках), параметры применены сейчас. Проверь скорость через минуту."
+                    } else {
+                        "Что-то пошло не так (скрипт: $scriptOk, применение: $appliedOk) — попробуй ещё раз или сообщи детали."
+                    }
+                }
+            }.start()
+        }
     }
 
     private fun showSettings() {

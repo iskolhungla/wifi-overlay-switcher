@@ -59,6 +59,10 @@
     <string name="settings_debug_dump">Писать отладочный файл (wifi_debug.txt)</string>
     <string name="settings_log_dir_label">Папка для файлов журнала</string>
     <string name="settings_adapter_label">Возможности WiFi-адаптера (справочно, не настройка)</string>
+    <string name="settings_htfix_label">HT40/80-фикс для MediaTek gen4m (экспериментально)</string>
+    <string name="settings_htfix_hint">Нажми «Проверить», прежде чем что-то устанавливать</string>
+    <string name="htfix_diagnose">Проверить</string>
+    <string name="htfix_install">Установить и применить</string>
     <string name="adapter_capability_format">2.4 ГГц: до %1$d МГц\n5 ГГц: до %2$d МГц (~%3$d Мбит/с, 2 потока)</string>
     <string name="adapter_capability_unknown">Не удалось определить</string>
 </resources>
