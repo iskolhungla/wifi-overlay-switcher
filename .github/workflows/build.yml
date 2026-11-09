@@ -20,11 +20,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install SDK platform & build-tools
-        run: sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools" > /dev/null
+      - name: Install SDK platform & build-tools (SDK is preinstalled on the runner)
+        run: |
+          SDKM=$(ls $ANDROID_HOME/cmdline-tools/*/bin/sdkmanager | head -1)
+          yes | $SDKM --licenses > /dev/null || true
+          $SDKM "platforms;android-34" "build-tools;34.0.0" "platform-tools" > /dev/null
 
       - name: Download standalone Gradle
         run: |
