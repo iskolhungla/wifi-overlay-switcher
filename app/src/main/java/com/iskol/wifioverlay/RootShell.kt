@@ -30,6 +30,15 @@ object RootShell {
 
     /** Псевдо-интерактивная su-сессия от имени указанного uid (для uid=2000 — "shell"). */
     fun execAsUid(uid: Int, command: String, timeoutMs: Long = 8000): String {
+        val first = execAsUidOnce(uid, command, timeoutMs)
+        if (first.isNotBlank()) return first
+        // Холодный старт после долгого простоя: magiskd/su отвечают медленно или
+        // первая сессия «пустая». Повторяем один раз с удвоенным таймаутом.
+        Log.d(TAG, "uid=$uid cmd=[$command] empty on first try — retrying with longer timeout")
+        return execAsUidOnce(uid, command, timeoutMs * 2)
+    }
+
+    private fun execAsUidOnce(uid: Int, command: String, timeoutMs: Long): String {
         return try {
             val process = ProcessBuilder("su", uid.toString())
                 .redirectErrorStream(true)

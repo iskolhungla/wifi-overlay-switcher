@@ -65,4 +65,7 @@
     <string name="htfix_install">Установить и применить</string>
     <string name="adapter_capability_format">2.4 ГГц: до %1$d МГц\n5 ГГц: до %2$d МГц (~%3$d Мбит/с, 2 потока)</string>
     <string name="adapter_capability_unknown">Не удалось определить</string>
+    <string name="history_title_global">История подключений</string>
+    <string name="history_title_network">История: %1$s</string>
+    <string name="history_empty">Записей пока нет. История копится в фоне, начиная с этой версии.</string>
 </resources>

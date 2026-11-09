@@ -186,6 +186,9 @@ class OverlayService : Service() {
         view.findViewById<View>(R.id.btnDetailBack).setOnClickListener { hideNetworkDetail() }
         view.findViewById<View>(R.id.btnDetailCopyAll).setOnClickListener { copyAllDetailFields() }
         view.findViewById<View>(R.id.btnSettings).setOnClickListener { showSettings() }
+        view.findViewById<View>(R.id.btnHistory).setOnClickListener { showHistory(null) }
+        view.findViewById<View>(R.id.btnHistoryBack).setOnClickListener { hideHistory() }
+        try { WifiLogService.start(this) } catch (_: Exception) {}
         view.findViewById<View>(R.id.btnSettingsClose).setOnClickListener { hideSettings() }
         setupSettingsControls(view)
 
@@ -229,11 +232,6 @@ class OverlayService : Service() {
         cbConnectionLog.isChecked = AppSettings.isConnectionLogEnabled(this)
         cbConnectionLog.setOnCheckedChangeListener { _, checked ->
             AppSettings.setConnectionLogEnabled(this, checked)
-            if (checked) {
-                WifiLogService.start(this)
-            } else {
-                WifiLogService.stop(this)
-            }
         }
 
         val cbDebugDump = view.findViewById<android.widget.CheckBox>(R.id.cbDebugDump)
@@ -521,6 +519,7 @@ class OverlayService : Service() {
                     val connectedAt = history?.lastConnectedAt ?: snapshot?.connectedAt
                     if (connectedAt != null) {
                         addDetailRow(fieldsContainer, getString(R.string.detail_last_connected), formatDateTime(connectedAt))
+                            .setOnClickListener { showHistory(network.ssid) }
                     }
                     if (history?.lastDisconnectedAt != null) {
                         addDetailRow(fieldsContainer, getString(R.string.detail_last_disconnected), formatDateTime(history.lastDisconnectedAt))
@@ -586,6 +585,7 @@ class OverlayService : Service() {
     private fun addConnectionDurationRow(container: LinearLayout, ssid: String) {
         val connectedAt = SystemConnectionHistory.historyFor(ssid)?.lastConnectedAt ?: return
         addDetailRow(container, getString(R.string.detail_connected_since), formatDateTime(connectedAt))
+            .setOnClickListener { showHistory(ssid) }
         addDetailRow(container, getString(R.string.detail_duration), formatDuration(System.currentTimeMillis() - connectedAt))
     }
 
@@ -606,7 +606,7 @@ class OverlayService : Service() {
         }
     }
 
-    private fun addDetailRow(container: LinearLayout, label: String, value: String) {
+    private fun addDetailRow(container: LinearLayout, label: String, value: String): View {
         val row = LayoutInflater.from(this).inflate(R.layout.item_detail_row, container, false)
         row.findViewById<TextView>(R.id.tvLabel).text = label
         row.findViewById<TextView>(R.id.tvValue).text = value
@@ -614,6 +614,65 @@ class OverlayService : Service() {
             copyToClipboard(value)
         }
         container.addView(row)
+        return row
+    }
+
+    // ---- История подключений ----
+
+    /** Откуда открыли историю: true — из деталей сети (назад вернёт к ним). */
+    private var historyFromDetail = false
+
+    private fun showHistory(ssid: String?) {
+        val view = overlayView ?: return
+        val container = view.findViewById<LinearLayout>(R.id.historyContainer)
+        val list = view.findViewById<LinearLayout>(R.id.historyListContainer)
+        view.findViewById<TextView>(R.id.tvHistoryTitle).text =
+            if (ssid == null) getString(R.string.history_title_global) else getString(R.string.history_title_network, ssid)
+
+        historyFromDetail = ssid != null
+        list.removeAllViews()
+        val entries = if (ssid == null) ConnectionEventLog.readAll(this).sortedByDescending { it.timestamp }
+        else ConnectionEventLog.readForSsid(this, ssid)
+
+        if (entries.isEmpty()) {
+            list.addView(TextView(this).apply {
+                text = getString(R.string.history_empty)
+                setTextColor(0x80FFFFFF.toInt())
+                textSize = 13f
+            })
+        }
+        entries.forEach { e ->
+            val connected = e.eventType == ConnectionEventLog.TYPE_CONNECTED
+            val sb = StringBuilder()
+            sb.append(if (connected) "▲ " else "▼ ")
+            sb.append(formatDateTime(e.timestamp))
+            if (ssid == null) sb.append("  ").append(e.ssid)
+            if (connected) {
+                e.frequency?.let { sb.append("\nканал ").append(NetworkAdapter.frequencyToChannel(it)) }
+                e.channelWidthMhz?.let { sb.append(", ").append(it).append(" МГц") }
+            }
+            list.addView(TextView(this).apply {
+                text = sb.toString()
+                setTextColor(if (connected) 0xFF81C784.toInt() else 0xFFE57373.toInt())
+                textSize = 13f
+                setPadding(0, 6, 0, 6)
+            })
+        }
+
+        view.findViewById<View>(R.id.recyclerNetworks).visibility = View.GONE
+        view.findViewById<View>(R.id.networkDetailContainer).visibility = View.GONE
+        view.findViewById<View>(R.id.settingsContainer).visibility = View.GONE
+        container.visibility = View.VISIBLE
+    }
+
+    private fun hideHistory() {
+        val view = overlayView ?: return
+        view.findViewById<View>(R.id.historyContainer).visibility = View.GONE
+        if (historyFromDetail) {
+            view.findViewById<View>(R.id.networkDetailContainer).visibility = View.VISIBLE
+        } else {
+            view.findViewById<View>(R.id.recyclerNetworks).visibility = View.VISIBLE
+        }
     }
 
     private fun copyAllDetailFields() {

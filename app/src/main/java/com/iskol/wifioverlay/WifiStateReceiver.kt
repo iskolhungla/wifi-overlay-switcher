@@ -27,12 +27,17 @@ class WifiStateReceiver : BroadcastReceiver() {
 
         @Suppress("DEPRECATION")
         val networkInfo = intent.getParcelableExtra<NetworkInfo>(WifiManager.EXTRA_NETWORK_INFO)
-        if (networkInfo?.state != NetworkInfo.State.CONNECTED) return
+        val state = networkInfo?.state
+        if (state != NetworkInfo.State.CONNECTED && state != NetworkInfo.State.DISCONNECTED) return
 
         val pendingResult = goAsync()
         Thread {
             try {
-                recordConnection(context.applicationContext)
+                if (state == NetworkInfo.State.CONNECTED) {
+                    recordConnection(context.applicationContext)
+                } else {
+                    recordDisconnection(context.applicationContext)
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "WifiStateReceiver failed: ${e.message}")
             } finally {
@@ -41,9 +46,23 @@ class WifiStateReceiver : BroadcastReceiver() {
         }.start()
     }
 
+    private fun recordDisconnection(context: Context) {
+        val ssid = ConnectionEventLog.getLastConnectedSsid(context) ?: return
+        val last = ConnectionEventLog.readAll(context).lastOrNull()
+        // Не дублируем: система шлёт DISCONNECTED несколько раз подряд.
+        if (last != null && last.ssid == ssid && last.eventType == ConnectionEventLog.TYPE_DISCONNECTED) return
+        ConnectionEventLog.addEvent(
+            context,
+            ConnectionEventLog.Entry(System.currentTimeMillis(), ssid, ConnectionEventLog.TYPE_DISCONNECTED, null, null)
+        )
+    }
+
     private fun recordConnection(context: Context) {
         val ssid = RootWifiControl.currentSsid() ?: return
         val now = System.currentTimeMillis()
+        val lastEvent = ConnectionEventLog.readAll(context).lastOrNull()
+        val isDuplicate = lastEvent != null && lastEvent.ssid == ssid &&
+            lastEvent.eventType == ConnectionEventLog.TYPE_CONNECTED
 
         val scanEntry = RootWifiControl.scanNetworks().firstOrNull { it.ssid == ssid }
         val width = IwScanReader.readChannelWidths()[ssid]
@@ -71,7 +90,15 @@ class WifiStateReceiver : BroadcastReceiver() {
             )
         )
 
-        if (AppSettings.isConnectionLogEnabled(context)) {
+        if (!isDuplicate) {
+            ConnectionEventLog.addEvent(
+                context,
+                ConnectionEventLog.Entry(now, ssid, ConnectionEventLog.TYPE_CONNECTED, scanEntry?.frequency, width)
+            )
+        }
+        ConnectionEventLog.setLastConnectedSsid(context, ssid)
+
+        if (AppSettings.isConnectionLogEnabled(context) && !isDuplicate) {
             val timestamp = SimpleDateFormat("yyyy.MM.dd HH:mm:ss", Locale.getDefault()).format(now)
             val widthText = width?.let { "${it}МГц" } ?: "?МГц"
             val channelText = scanEntry?.frequency?.let { NetworkAdapter.frequencyToChannel(it) } ?: "?"
