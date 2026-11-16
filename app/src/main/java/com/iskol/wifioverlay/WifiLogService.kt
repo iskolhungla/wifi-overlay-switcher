@@ -48,6 +48,7 @@ class WifiLogService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        RootShell.init(this)
         startForegroundNotification()
         registerReceiver(receiver, IntentFilter(WifiManager.NETWORK_STATE_CHANGED_ACTION))
     }

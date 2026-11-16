@@ -69,6 +69,7 @@ class OverlayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        RootShell.init(this)
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         startForegroundNotification()
@@ -90,6 +91,18 @@ class OverlayService : Service() {
             }
         }
         writeImportDebugFile(passwords.keys)
+    }
+
+    /** Копирует журнал таймингов su в папку логов из настроек (только при включённом отладочном дампе). */
+    private fun syncTimingLog() {
+        try {
+            if (!AppSettings.isDebugDumpEnabled(this)) return
+            val f = java.io.File(filesDir, "root_timing.txt")
+            if (!f.exists()) return
+            val dir = AppSettings.getLogDirectory(this)
+            RootShell.execAsRoot("mkdir -p \"$dir\" && cp \"${f.absolutePath}\" \"$dir/root_timing.txt\" && chmod 666 \"$dir/root_timing.txt\"")
+        } catch (_: Exception) {
+        }
     }
 
     private fun writeImportDebugFile(importedSsids: Set<String>) {
@@ -384,9 +397,14 @@ class OverlayService : Service() {
         }
     }
 
+    private val refreshing = java.util.concurrent.atomic.AtomicBoolean(false)
+
     private fun refreshNetworks() {
         mainHandler.removeCallbacks(fallbackRefreshRunnable)
+        // Не запускаем второй параллельный опрос поверх идущего.
+        if (!refreshing.compareAndSet(false, true)) return
         Thread {
+          try {
             val scanEntries = RootWifiControl.scanNetworks()
             val currentSsid = RootWifiControl.currentSsid()
             val savedNames = RootWifiControl.listSavedNetworkNames()
@@ -418,6 +436,15 @@ class OverlayService : Service() {
                     else getString(R.string.networks_found, items.size)
                 )
             }
+          } catch (e: Throwable) {
+            mainHandler.post {
+                setBusy(false)
+                setStatus(getString(R.string.no_networks))
+            }
+          } finally {
+            refreshing.set(false)
+            syncTimingLog()
+          }
         }.start()
     }
 
