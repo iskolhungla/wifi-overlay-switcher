@@ -7,13 +7,12 @@ import org.json.JSONObject
 /**
  * Полная история подключений/отключений по всем сетям — не только через наше
  * приложение, ловится фоновым WifiStateReceiver для любого источника
- * переключения. Ограничена 512 записями (старые вытесняются новыми).
+ * переключения. Размер ограничен настройкой (по умолчанию 512, старые вытесняются новыми).
  */
 object ConnectionEventLog {
     private const val PREFS = "wifi_overlay_event_log"
     private const val KEY_EVENTS = "events"
     private const val KEY_LAST_SSID = "last_connected_ssid"
-    const val MAX_ENTRIES = 512
 
     const val TYPE_CONNECTED = "connected"
     const val TYPE_DISCONNECTED = "disconnected"
@@ -29,7 +28,8 @@ object ConnectionEventLog {
     fun addEvent(context: Context, entry: Entry) {
         val events = readAll(context).toMutableList()
         events.add(entry)
-        while (events.size > MAX_ENTRIES) {
+        val max = AppSettings.getHistoryMaxEntries(context)
+        while (events.size > max) {
             events.removeAt(0)
         }
         saveAll(context, events)

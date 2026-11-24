@@ -67,4 +67,18 @@ object AppSettings {
             .putString(KEY_LOG_DIR, path)
             .apply()
     }
+
+    private const val KEY_HISTORY_MAX = "history_max_entries"
+    const val DEFAULT_HISTORY_MAX = 512
+    const val HISTORY_MAX_LIMIT = 5000
+
+    fun getHistoryMaxEntries(context: Context): Int {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getInt(KEY_HISTORY_MAX, DEFAULT_HISTORY_MAX).coerceIn(20, HISTORY_MAX_LIMIT)
+    }
+
+    fun setHistoryMaxEntries(context: Context, value: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putInt(KEY_HISTORY_MAX, value.coerceIn(20, HISTORY_MAX_LIMIT)).apply()
+    }
 }

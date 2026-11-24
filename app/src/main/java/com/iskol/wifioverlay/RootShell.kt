@@ -43,14 +43,26 @@ object RootShell {
     }
 
     /** Прямой root (домен magisk) — для операций, не завязанных на системные binder-сервисы. */
-    fun execAsRoot(command: String): Pair<Boolean, String> {
+    fun execAsRoot(command: String, timeoutMs: Long = 10000): Pair<Boolean, String> {
+        val t0 = System.currentTimeMillis()
         return try {
             val process = ProcessBuilder("su", "-c", command)
                 .redirectErrorStream(true)
                 .start()
-            val output = process.inputStream.bufferedReader().readText()
-            val exit = process.waitFor()
-            Pair(exit == 0, output)
+            val output = StringBuilder()
+            val reader = Thread {
+                try {
+                    process.inputStream.bufferedReader().forEachLine { output.append(it).append('\n') }
+                } catch (_: Exception) {
+                }
+            }
+            reader.start()
+            val finished = process.waitFor(timeoutMs, TimeUnit.MILLISECONDS)
+            if (!finished) process.destroyForcibly()
+            reader.join(1000)
+            val exit = if (finished) process.exitValue() else -1
+            timingLog("[root: ${command.take(60)}] took=${System.currentTimeMillis() - t0}ms exit=$exit len=${output.length}${if (finished) "" else " TIMEOUT"}")
+            Pair(finished && exit == 0, output.toString())
         } catch (e: Exception) {
             Log.e(TAG, "root exec failed for [$command]: ${e.message}")
             Pair(false, e.message ?: "")

@@ -68,4 +68,5 @@
     <string name="history_title_global">История подключений</string>
     <string name="history_title_network">История: %1$s</string>
     <string name="history_empty">Записей пока нет. История копится в фоне, начиная с этой версии.</string>
+    <string name="settings_history_max_label">Сколько записей истории хранить (20–5000, по умолчанию 512)</string>
 </resources>

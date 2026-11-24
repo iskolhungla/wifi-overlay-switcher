@@ -295,6 +295,25 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:paddingTop="14dp"
+            android:paddingBottom="2dp"
+            android:text="@string/settings_history_max_label"
+            android:textColor="#B0FFFFFF"
+            android:textSize="12sp" />
+
+        <EditText
+            android:id="@+id/etHistoryMax"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:maxLength="4"
+            android:singleLine="true"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:paddingTop="10dp"
             android:paddingBottom="2dp"
             android:text="@string/settings_log_dir_label"

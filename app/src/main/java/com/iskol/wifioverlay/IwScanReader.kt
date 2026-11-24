@@ -1,7 +1,7 @@
 package com.iskol.wifioverlay
 
 /**
- * Ширина Wi-Fi канала через `iw dev wlan0 scan` — этот путь идёт напрямую к
+ * Ширина Wi-Fi канала через `iw dev wlan0 scan dump` (читает готовый кэш драйвера, НЕ запускает активное сканирование — оно зависало и сбивало системные результаты) — этот путь идёт напрямую к
  * драйверу через netlink, минуя WifiService/binder, где у нас были проблемы
  * с урезанным `WifiManager.getScanResults()` даже под привилегиями.
  *
@@ -22,7 +22,7 @@ object IwScanReader {
 
     /** SSID -> ширина канала в МГц. */
     fun readChannelWidths(): Map<String, Int> {
-        val (ok, out) = RootShell.execAsRoot("iw dev wlan0 scan")
+        val (ok, out) = RootShell.execAsRoot("iw dev wlan0 scan dump", 6000)
         if (!ok || out.isBlank()) return emptyMap()
 
         val blocks = out.split(Regex("""(?m)^BSS """)).drop(1)

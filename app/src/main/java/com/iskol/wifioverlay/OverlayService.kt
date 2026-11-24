@@ -266,6 +266,17 @@ class OverlayService : Service() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
+        val etHistoryMax = view.findViewById<EditText>(R.id.etHistoryMax)
+        etHistoryMax.setText(AppSettings.getHistoryMaxEntries(this).toString())
+        etHistoryMax.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(s: android.text.Editable?) {
+                val n = s?.toString()?.toIntOrNull() ?: return
+                AppSettings.setHistoryMaxEntries(this@OverlayService, n)
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+
         val tvAdapter = view.findViewById<TextView>(R.id.tvAdapterCapability)
         tvAdapter.text = "…"
         Thread {
@@ -408,9 +419,7 @@ class OverlayService : Service() {
             val scanEntries = RootWifiControl.scanNetworks()
             val currentSsid = RootWifiControl.currentSsid()
             val savedNames = RootWifiControl.listSavedNetworkNames()
-            val widthBySsid = fetchChannelWidths()
-
-            val items = scanEntries
+            fun build(widths: Map<String, Int>) = scanEntries
                 .distinctBy { it.ssid }
                 .map { entry ->
                     NetworkItem(
@@ -418,7 +427,7 @@ class OverlayService : Service() {
                         isSecured = entry.secured,
                         level = entry.rssi,
                         frequency = entry.frequency,
-                        channelWidthMhz = widthBySsid[entry.ssid],
+                        channelWidthMhz = widths[entry.ssid],
                         isConnected = entry.ssid == currentSsid,
                         isSaved = savedNames.contains(entry.ssid)
                     )
@@ -428,13 +437,22 @@ class OverlayService : Service() {
                         .thenByDescending { it.level }
                 )
 
+            // Сначала сразу показываем список (без ширины), индикатор гасим — ничего больше не блокирует.
+            val quick = build(emptyMap())
             mainHandler.post {
-                adapter.submit(items)
+                adapter.submit(quick)
                 setBusy(false)
                 setStatus(
-                    if (items.isEmpty()) getString(R.string.no_networks)
-                    else getString(R.string.networks_found, items.size)
+                    if (quick.isEmpty()) getString(R.string.no_networks)
+                    else getString(R.string.networks_found, quick.size)
                 )
+            }
+
+            // Затем (с таймаутом) подгружаем ширину каналов и обновляем список.
+            val widthBySsid = fetchChannelWidths()
+            if (widthBySsid.isNotEmpty()) {
+                val full = build(widthBySsid)
+                mainHandler.post { adapter.submit(full) }
             }
           } catch (e: Throwable) {
             mainHandler.post {
