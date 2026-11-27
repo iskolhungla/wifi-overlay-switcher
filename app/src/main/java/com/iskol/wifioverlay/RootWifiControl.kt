@@ -41,6 +41,11 @@ object RootWifiControl {
         return entries
     }
 
+    /** Просит систему запустить реальное сканирование (`cmd wifi start-scan` разрешён под shell). */
+    fun startScanShell() {
+        RootShell.execAsUid(SHELL_UID, "cmd wifi start-scan", 5000)
+    }
+
     fun currentSsid(): String? {
         val out = RootShell.execAsUid(SHELL_UID, "cmd wifi status")
         val regex = Regex("connected to \"([^\"]+)\"")

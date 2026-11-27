@@ -1,0 +1,6 @@
+id=wifioverlay_priv
+name=WiFi Overlay (Privileged)
+version=__VERSION__
+versionCode=__CODE__
+author=iskolhungla
+description=Устанавливает WiFi Overlay как привилегированное системное приложение, чтобы подключение к WiFi шло без системных диалогов и мгновенно.

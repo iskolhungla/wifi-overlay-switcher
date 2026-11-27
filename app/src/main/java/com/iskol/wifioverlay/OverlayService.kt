@@ -61,6 +61,9 @@ class OverlayService : Service() {
 
     private val scanReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
+            // Пока идёт «выдержка» после запуска сканирования — не обновляем раньше времени,
+            // итоговый опрос выполнится по её окончании.
+            if (System.currentTimeMillis() < settleUntil) return
             refreshNetworks()
         }
     }
@@ -200,6 +203,9 @@ class OverlayService : Service() {
         view.findViewById<View>(R.id.btnDetailCopyAll).setOnClickListener { copyAllDetailFields() }
         view.findViewById<View>(R.id.btnSettings).setOnClickListener { showSettings() }
         view.findViewById<View>(R.id.btnHistory).setOnClickListener { showHistory(null) }
+        view.findViewById<View>(R.id.btnScanFast).setOnClickListener { triggerScan(AppSettings.ScanMode.FAST) }
+        view.findViewById<View>(R.id.btnScanNormal).setOnClickListener { triggerScan(AppSettings.ScanMode.NORMAL) }
+        view.findViewById<View>(R.id.btnScanDeep).setOnClickListener { triggerScan(AppSettings.ScanMode.DEEP) }
         view.findViewById<View>(R.id.btnHistoryBack).setOnClickListener { hideHistory() }
         try { WifiLogService.start(this) } catch (_: Exception) {}
         view.findViewById<View>(R.id.btnSettingsClose).setOnClickListener { hideSettings() }
@@ -261,6 +267,33 @@ class OverlayService : Service() {
                 if (path.isNotEmpty()) {
                     AppSettings.setLogDirectory(this@OverlayService, path)
                 }
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+
+        val rgScanMode = view.findViewById<RadioGroup>(R.id.rgScanMode)
+        when (AppSettings.getScanMode(this)) {
+            AppSettings.ScanMode.FAST -> view.findViewById<RadioButton>(R.id.rbScanFast).isChecked = true
+            AppSettings.ScanMode.DEEP -> view.findViewById<RadioButton>(R.id.rbScanDeep).isChecked = true
+            else -> view.findViewById<RadioButton>(R.id.rbScanNormal).isChecked = true
+        }
+        rgScanMode.setOnCheckedChangeListener { _, id ->
+            AppSettings.setScanMode(
+                this,
+                when (id) {
+                    R.id.rbScanFast -> AppSettings.ScanMode.FAST
+                    R.id.rbScanDeep -> AppSettings.ScanMode.DEEP
+                    else -> AppSettings.ScanMode.NORMAL
+                }
+            )
+        }
+        val etScanWait = view.findViewById<EditText>(R.id.etScanWait)
+        etScanWait.setText(AppSettings.getScanWaitSeconds(this).toString())
+        etScanWait.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(s: android.text.Editable?) {
+                val n = s?.toString()?.toIntOrNull() ?: return
+                AppSettings.setScanWaitSeconds(this@OverlayService, n)
             }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -369,20 +402,64 @@ class OverlayService : Service() {
             if (busy) View.VISIBLE else View.GONE
     }
 
-    private fun triggerScan() {
-        @Suppress("DEPRECATION")
-        wifiManager.startScan()
+    @Volatile
+    private var settleUntil = 0L
+
+    private fun triggerScan(mode: AppSettings.ScanMode = AppSettings.getScanMode(this)) {
         setStatus(getString(R.string.scanning))
         setBusy(true)
-        // Подстраховка: система может троттлить частые сканы и не прислать
-        // SCAN_RESULTS_AVAILABLE_ACTION вообще — на этот случай обновляем
-        // список принудительно через несколько секунд, тем, что реально
-        // есть в кэше системы на этот момент.
         mainHandler.removeCallbacks(fallbackRefreshRunnable)
-        mainHandler.postDelayed(fallbackRefreshRunnable, 3000)
+
+        if (mode == AppSettings.ScanMode.FAST) {
+            // Быстро: только то, что уже есть в кэше системы и драйвера.
+            settleUntil = 0L
+            refreshNetworks()
+            return
+        }
+
+        val waitMs = AppSettings.getScanWaitSeconds(this) * 1000L +
+            if (mode == AppSettings.ScanMode.DEEP) 2000L else 0L
+        settleUntil = System.currentTimeMillis() + waitMs
+
+        try {
+            @Suppress("DEPRECATION")
+            wifiManager.startScan()
+        } catch (_: Exception) {
+        }
+        Thread {
+            RootWifiControl.startScanShell()
+            // Глубоко: дополнительно просим драйвер просканировать все каналы напрямую.
+            if (mode == AppSettings.ScanMode.DEEP) IwScanReader.trigger()
+        }.start()
+
+        mainHandler.postDelayed(fallbackRefreshRunnable, waitMs)
     }
 
-    private val fallbackRefreshRunnable = Runnable { refreshNetworks() }
+    // Итоговый опрос после выдержки; если предыдущий ещё идёт — чуть подождать и повторить.
+    private val fallbackRefreshRunnable = object : Runnable {
+        override fun run() {
+            if (refreshing.get()) mainHandler.postDelayed(this, 700) else refreshNetworks()
+        }
+    }
+
+    private fun loadWidthCache(): MutableMap<String, Int> {
+        val map = mutableMapOf<String, Int>()
+        try {
+            val o = org.json.JSONObject(getSharedPreferences("wifi_overlay_widths", MODE_PRIVATE).getString("cache", "{}") ?: "{}")
+            o.keys().forEach { k -> map[k] = o.getInt(k) }
+        } catch (_: Exception) {
+        }
+        return map
+    }
+
+    private fun saveWidthCache(map: Map<String, Int>) {
+        try {
+            val o = org.json.JSONObject()
+            map.forEach { (k, v) -> o.put(k, v) }
+            getSharedPreferences("wifi_overlay_widths", MODE_PRIVATE).edit().putString("cache", o.toString()).apply()
+        } catch (_: Exception) {
+        }
+    }
 
     private fun setStatus(text: String) {
         overlayView?.findViewById<TextView>(R.id.tvStatus)?.text = text
@@ -419,26 +496,33 @@ class OverlayService : Service() {
             val scanEntries = RootWifiControl.scanNetworks()
             val currentSsid = RootWifiControl.currentSsid()
             val savedNames = RootWifiControl.listSavedNetworkNames()
-            fun build(widths: Map<String, Int>) = scanEntries
-                .distinctBy { it.ssid }
-                .map { entry ->
+            val widthCache = loadWidthCache()
+
+            // Объединяем системный список и кэш драйвера (iw): сеть, пропавшая из одного, может быть в другом.
+            fun build(iw: List<IwScanReader.IwNet>): List<NetworkItem> {
+                val sys = scanEntries.groupBy { it.ssid }.mapValues { e -> e.value.maxByOrNull { it.rssi }!! }
+                val iwBy = iw.associateBy { it.ssid }
+                return (sys.keys + iwBy.keys).map { ssid ->
+                    val s = sys[ssid]
+                    val i = iwBy[ssid]
+                    val useIw = i != null && (s == null || i.rssi > s.rssi)
                     NetworkItem(
-                        ssid = entry.ssid,
-                        isSecured = entry.secured,
-                        level = entry.rssi,
-                        frequency = entry.frequency,
-                        channelWidthMhz = widths[entry.ssid],
-                        isConnected = entry.ssid == currentSsid,
-                        isSaved = savedNames.contains(entry.ssid)
+                        ssid = ssid,
+                        isSecured = s?.secured ?: i!!.secured,
+                        level = if (useIw) i!!.rssi else s!!.rssi,
+                        frequency = if (useIw) i!!.frequency else s!!.frequency,
+                        channelWidthMhz = i?.widthMhz ?: widthCache[ssid],
+                        isConnected = ssid == currentSsid,
+                        isSaved = savedNames.contains(ssid)
                     )
-                }
-                .sortedWith(
+                }.sortedWith(
                     compareByDescending<NetworkItem> { it.isConnected }
                         .thenByDescending { it.level }
                 )
+            }
 
-            // Сначала сразу показываем список (без ширины), индикатор гасим — ничего больше не блокирует.
-            val quick = build(emptyMap())
+            // Сначала сразу показываем системный список, индикатор гасим — дальше ничего не блокирует.
+            val quick = build(emptyList())
             mainHandler.post {
                 adapter.submit(quick)
                 setBusy(false)
@@ -448,11 +532,16 @@ class OverlayService : Service() {
                 )
             }
 
-            // Затем (с таймаутом) подгружаем ширину каналов и обновляем список.
-            val widthBySsid = fetchChannelWidths()
-            if (widthBySsid.isNotEmpty()) {
-                val full = build(widthBySsid)
-                mainHandler.post { adapter.submit(full) }
+            // Затем (с таймаутом) читаем кэш драйвера, объединяем и запоминаем ширину каналов.
+            val iwNets = try { IwScanReader.readNetworks() } catch (e: Exception) { emptyList() }
+            if (iwNets.isNotEmpty()) {
+                iwNets.forEach { widthCache[it.ssid] = it.widthMhz }
+                saveWidthCache(widthCache)
+                val full = build(iwNets)
+                mainHandler.post {
+                    adapter.submit(full)
+                    setStatus(getString(R.string.networks_found, full.size))
+                }
             }
           } catch (e: Throwable) {
             mainHandler.post {

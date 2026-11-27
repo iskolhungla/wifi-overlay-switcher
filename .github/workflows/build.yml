@@ -35,6 +35,14 @@ jobs:
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon --stacktrace
 
+      - name: Build Magisk module zip
+        run: |
+          mkdir -p module-build/system/priv-app/WifiOverlay
+          cp -r magisk-module/. module-build/
+          cp app/build/outputs/apk/debug/*.apk module-build/system/priv-app/WifiOverlay/WifiOverlay.apk
+          sed -i "s/__VERSION__/build-${{ github.run_number }}/; s/__CODE__/${{ github.run_number }}/" module-build/module.prop
+          (cd module-build && zip -qr ../wifioverlay-magisk-module-build${{ github.run_number }}.zip .)
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -46,6 +54,8 @@ jobs:
         with:
           tag_name: build-${{ github.run_number }}
           name: "Build #${{ github.run_number }}"
-          files: app/build/outputs/apk/debug/*.apk
+          files: |
+            app/build/outputs/apk/debug/*.apk
+            wifioverlay-magisk-module-build${{ github.run_number }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

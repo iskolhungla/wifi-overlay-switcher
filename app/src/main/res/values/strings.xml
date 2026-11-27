@@ -69,4 +69,12 @@
     <string name="history_title_network">История: %1$s</string>
     <string name="history_empty">Записей пока нет. История копится в фоне, начиная с этой версии.</string>
     <string name="settings_history_max_label">Сколько записей истории хранить (20–5000, по умолчанию 512)</string>
+    <string name="scan_fast">Быстро</string>
+    <string name="scan_normal">Обычно</string>
+    <string name="scan_deep">Глубоко</string>
+    <string name="settings_scan_mode_label">Режим сканирования по умолчанию</string>
+    <string name="settings_scan_fast">Быстро — только кэш системы и драйвера</string>
+    <string name="settings_scan_normal">Обычно — запуск сканирования + ожидание</string>
+    <string name="settings_scan_deep">Глубоко — все каналы через драйвер + ожидание</string>
+    <string name="settings_scan_wait_label">Время ожидания сканирования, секунд (1–20; в режиме «Глубоко» +2 с)</string>
 </resources>

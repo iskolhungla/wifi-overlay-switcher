@@ -81,4 +81,25 @@ object AppSettings {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putInt(KEY_HISTORY_MAX, value.coerceIn(20, HISTORY_MAX_LIMIT)).apply()
     }
+
+    enum class ScanMode { FAST, NORMAL, DEEP }
+    private const val KEY_SCAN_MODE = "scan_mode"
+    private const val KEY_SCAN_WAIT = "scan_wait_seconds"
+
+    fun getScanMode(context: Context): ScanMode {
+        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_SCAN_MODE, null)
+        return ScanMode.values().firstOrNull { it.name == raw } ?: ScanMode.NORMAL
+    }
+
+    fun setScanMode(context: Context, mode: ScanMode) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_SCAN_MODE, mode.name).apply()
+    }
+
+    /** Сколько секунд ждать результатов после запуска сканирования (Deep добавляет ещё 2 с). */
+    fun getScanWaitSeconds(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_SCAN_WAIT, 4).coerceIn(1, 20)
+
+    fun setScanWaitSeconds(context: Context, value: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt(KEY_SCAN_WAIT, value.coerceIn(1, 20)).apply()
+    }
 }
